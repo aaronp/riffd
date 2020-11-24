@@ -17,8 +17,7 @@ package object riff {
   /**
    * The general means to send some request to a raft node
    */
-  type RemoteClient = Either[Request, Response] => Task[Unit]
-
+  type RemoteClient = Either[RiffRequest, RiffResponse] => Task[Unit]
 
   type HB = Fiber[Nothing, Unit]
 }

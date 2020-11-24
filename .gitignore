@@ -9,3 +9,5 @@ target
 .vscode
 out
 shared-src
+docs/src/gitbook/_bookriff-data
+riff-data

@@ -2,12 +2,11 @@ package riff
 
 import riff.Input.HeartbeatTimeout
 import zio._
-import zio.console.putStrLn
 import zio.duration._
 
 class HeartbeatTest extends BaseTest {
 
-  val leaderTimeout = 250.millis
+  val leaderTimeout = 150.millis
   val repeatFreq = (leaderTimeout.toMillis / 2).millis
   val testWindow = (leaderTimeout.toMillis * 50).millis
 
@@ -38,7 +37,7 @@ class HeartbeatTest extends BaseTest {
       val test = for {
         // create our HB under test
         heartbeat <- Heartbeat.period(
-          followerRange = TimeRange(500.millis),
+          followerRange = TimeRange(leaderTimeout * 2),
           leaderTimeout
         ).provideCustomLayer(queueLayer)
         // schedule a HB within the leader timeout -- we still expect to see HB messages regardless
@@ -65,14 +64,14 @@ class HeartbeatTest extends BaseTest {
       val test = for {
         // create our HB under test
         heartbeat <- Heartbeat(
-          followerRange = TimeRange(500.millis),
+          followerRange = TimeRange(leaderTimeout * 2),
           leaderRange = TimeRange(leaderTimeout),
         ).provideCustomLayer(queueLayer)
         // schedule a HB for a node, repeating every 1/2 leader range
-        _ <- heartbeat.scheduleHeartbeat(Some("foo")).schedule(Schedule.spaced(repeatFreq))
+        _ <- heartbeat.scheduleHeartbeat(Some("foo")).schedule(Schedule.spaced(repeatFreq)).fork
       } yield ()
 
-      test.timeout(testWindow).value()
+      test.timeout(leaderTimeout * 3).value()
       queue.size.value shouldBe 0
     }
     "trigger a HB timeout message if scheduleHeartbeat isn't called frequently enough" in {
@@ -82,7 +81,7 @@ class HeartbeatTest extends BaseTest {
       val test: ZIO[zio.ZEnv, Nothing, (Input, Input)] = for {
         // create our HB under test
         heartbeat <- Heartbeat(
-          followerRange = TimeRange(500.millis),
+          followerRange = TimeRange(leaderTimeout * 2),
           leaderRange = TimeRange(leaderTimeout),
         ).provideCustomLayer(queueLayer)
         // schedule a HB for a node, repeating every 1/2 leader range

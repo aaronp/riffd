@@ -1,38 +1,38 @@
 package riff.js.ui
 
-import org.scalajs.dom.raw.Element
+import riff.js.ui.JSRuntime.implicits._
 import riff.{Disk, DiskError, Offset, Record}
 import scalatags.JsDom.all._
-import Main.implicits._
 import zio.ZIO
 
 import scala.util.Try
 
-case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
+case class DiskTable(disk: Disk.Service)(onRefresh: => Unit) {
 
   private object Paging {
-    val offset = input(`type` := "text", value := "").render
+    val offset = input(`type` := "text", `class` := "input-field", value := "").render
 
-    offset.onkeyup = (e) => {
+    offset.onkeyup = _ => {
       for {
         _ <- Try(limit.value.toInt)
         _ <- Try(offset.value.toInt)
       } yield onRefresh
     }
-    val limit = input(`type` := "text", value := "6").render
-    limit.onkeyup = (e) => {
+    val limit = input(`type` := "text", value := "10", `class` := "input-field").render
+    limit.onkeyup = _ => {
       for {
         _ <- Try(limit.value.toInt)
         _ <- Try(offset.value.toInt)
       } yield onRefresh
     }
-    val render = span(
-      div(
-        span(span("Offset:"), offset)
+
+    val render = div(`class` := "form-style")(
+      label(`for` := offset.id)(
+        span("Offset:"), offset
       ),
-      div(
-        span(span("Limit:"), limit)
-      ),
+      label(`for` := limit.id)(
+        span("Limit:"), limit
+      )
     ).render
 
     def currentOffset(): Option[Offset] = Try(offset.value.toInt).toOption.map(Offset.apply)
@@ -54,6 +54,7 @@ case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
     update.future()
   }
 
+  val logDiv = h2("Log").render
   val update: ZIO[Any, DiskError, Unit] = {
     for {
       uncommitted <- disk.latestUncommitted()
@@ -67,13 +68,14 @@ case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
     } yield {
       tableDiv.innerHTML = ""
       tableDiv.appendChild(table((headerRow +: rows): _*).render)
-      log.innerHTML = ""
-      log.innerText = s"${committed.offset} / ${uncommitted.offset}"
+      logDiv.innerHTML = ""
+      logDiv.innerText = s"Log: ${committed.offset} / ${uncommitted.offset}"
     }
   }
 
   val tableDiv = div().render
-  val render = span(
+  val render = div(
+    logDiv,
     tableDiv,
     div(Paging.render),
   ).render

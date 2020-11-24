@@ -59,12 +59,12 @@ final case class TestCluster(allNodes: Set[NodeId],
   }
 
   def clientForNode(fromNodeId: NodeId) = new Cluster.Service {
-    override def broadcast(message: Request): IO[ClusterError, Unit] = {
+    override def broadcast(message: RiffRequest): IO[ClusterError, Unit] = {
       val entry = (counter.incrementAndGet(), TestMsg.broadcast(fromNodeId, message))
       messagesRef.update(entry :: _).unit
     }
 
-    override def reply(to: NodeId, message: Either[Request, Response]): IO[ClusterError, Unit] = {
+    override def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]): IO[ClusterError, Unit] = {
       val entry = (counter.incrementAndGet(), TestMsg.reply(fromNodeId, to, message))
       messagesRef.update(entry :: _).unit
     }
@@ -103,16 +103,16 @@ object TestCluster {
   }
 
   object TestMsg {
-    def broadcast(from: NodeId, message: Request) = BroadcastSent(from, message)
+    def broadcast(from: NodeId, message: RiffRequest) = BroadcastSent(from, message)
 
-    def reply(from: NodeId, to: NodeId, message: Either[Request, Response]) = Reply(from, to, message)
+    def reply(from: NodeId, to: NodeId, message: Either[RiffRequest, RiffResponse]) = Reply(from, to, message)
   }
 
-  final case class Reply(override val from: NodeId, to: NodeId, message: Either[Request, Response]) extends TestMsg {
+  final case class Reply(override val from: NodeId, to: NodeId, message: Either[RiffRequest, RiffResponse]) extends TestMsg {
     override def isFor(me: NodeId): Boolean = me == to
   }
 
-  final case class BroadcastSent(override val from: NodeId, message: Request) extends TestMsg {
+  final case class BroadcastSent(override val from: NodeId, message: RiffRequest) extends TestMsg {
     override def isFor(me: NodeId): Boolean = me != from
   }
 

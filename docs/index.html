@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script defer type="text/javascript" src="demo/riffjs-opt.js"></script>
+    <script type="text/javascript" src="demo/js/intro.min.js"></script>
+    <link rel="stylesheet" href="demo/css/app.css"/>
+    <link rel="stylesheet" href="demo/css/introjs.min.css"/>
+</head>
+<body onload="IndexPage('target')">
+
+<div id="bcerror"></div>
+<div id="target"></div>
+<script defer>
+    try {
+      var bc = new BroadcastChannel('testsupport');
+      bc.postMessage('New listening connected!');
+    } catch(err) {
+      document.getElementById("bcerror").innerHTML = "<p style='color:red;font-color:red;margin: 0;padding-left:50px;position: absolute;top: 50%;-ms-transform: translateY(-50%);transform: translateY(-50%);'>Sorry - as this is a demo/example page for development, only browsers which have BroadcastChannel are supported (e.g. not IE or Safari)</p>";
+    }
+</script>
+
+
+</body>
+</html>

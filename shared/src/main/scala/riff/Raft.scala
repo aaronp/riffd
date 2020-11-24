@@ -1,11 +1,11 @@
 package riff
 
-import java.util.concurrent.atomic.AtomicInteger
-
 import riff.Input.UserInput
 import zio._
 import zio.console.{Console, putStrLn}
 import zio.duration.Duration
+
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * @param nodeRef the current state of this node
@@ -36,12 +36,10 @@ final case class Raft(nodeRef: Ref[RaftNodeState],
       UIO(heartbeat).toLayer
   }
 
-  def applyInput(input: Input) = {
+  def applyInput(input: Input): ZIO[FullEnv, RaftNodeError, Unit] = {
     for {
       node <- nodeRef.get
-      _ <- putStrLn(s"applying ${input} to $node")
       updated <- node.update(input)
-      _ <- putStrLn(s"----> ${input} yields $updated")
       _ <- Logging.onUpdate(input, node, updated)
       _ <- nodeRef.set(updated)
     } yield ()
@@ -73,16 +71,16 @@ object Raft {
 
   def defaultQueue: ZLayer[Console, Nothing, Has[Queue[Input]]] = Queue.bounded[Input](100).toLayer
 
-  def make(disk: Disk.Service,
-           nodeId: NodeId = nextNodeId(),
-           raftCluster: ZIO[ZEnv, Nothing, Cluster.Service] = Cluster(),
-           logger: ZIO[ZEnv, Nothing, Logging.Service] = Logging.StdOut(),
-           newHeartbeat: ZIO[Has[Queue[Input]], Nothing, Heartbeat.Service] = Heartbeat(),
-           clusterRetrySchedule: Schedule[Any, Any, Duration] = Schedule.exponential(Duration.fromMillis(2000)),
-           maxRecordsToSend: Int = 100,
-           queueLayer: ZLayer[Console, Nothing, Has[Queue[Input]]] = defaultQueue,
-           clusterSize: Option[Int] = None
-          ): ZIO[zio.ZEnv, NoSuchElementException, Raft] = {
+  def apply(disk: Disk.Service,
+            nodeId: NodeId = nextNodeId(),
+            raftCluster: ZIO[ZEnv, Nothing, Cluster.Service] = Cluster(),
+            logger: ZIO[ZEnv, Nothing, Logging.Service] = Logging.StdOut(),
+            newHeartbeat: ZIO[Has[Queue[Input]], Nothing, Heartbeat.Service] = Heartbeat(),
+            clusterRetrySchedule: Schedule[Any, Any, Duration] = Schedule.exponential(Duration.fromMillis(2000)),
+            maxRecordsToSend: Int = 100,
+            queueLayer: ZLayer[Console, Nothing, Has[Queue[Input]]] = defaultQueue,
+            clusterSize: Option[Int] = None
+           ): ZIO[zio.ZEnv, Nothing, Raft] = {
 
     def newNode(commitIndex: LogCoords, initialIterm: Term): RaftNodeState = {
       RaftNodeState(
@@ -92,20 +90,22 @@ object Raft {
         commitIndex.offset,
         maxRecordsToSend,
         Role.Follower,
-        clusterRetrySchedule,
         None,
+        clusterRetrySchedule,
         clusterSize)
     }
 
-    val newNodeIO: ZIO[Has[Queue[Input]] with zio.ZEnv, NoSuchElementException, Raft] = for {
-      hb <- newHeartbeat
-      cluster <- raftCluster
-      (latest, term) <- disk.latestCommitted().zip(disk.currentTerm()).orDie
-      log <- logger
-      nodeRef <- Ref.make(newNode(latest, term))
-      queue <- ZIO.service[Queue[Input]]
-    } yield Raft(nodeRef, hb, disk, cluster, log, queue)
-    newNodeIO.provideCustomLayer(queueLayer)
+    val newNodeIO: ZIO[Has[Queue[Input]] with zio.ZEnv, NoSuchElementException, Raft] = {
+      for {
+        hb <- newHeartbeat
+        cluster <- raftCluster
+        (latest, term) <- disk.latestCommitted().zip(disk.currentTerm()).orDie
+        log <- logger
+        nodeRef <- Ref.make(newNode(latest, term))
+        queue <- ZIO.service[Queue[Input]]
+      } yield Raft(nodeRef, hb, disk, cluster, log, queue)
+    }
+    newNodeIO.orDie.provideCustomLayer(queueLayer)
   }
 
   private val nodeIdCounter = new AtomicInteger(0)

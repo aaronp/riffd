@@ -66,7 +66,7 @@ class RaftNodeStateTest extends BaseTest {
     "become the leader in a single-node cluster" in withTmpDir { dir =>
 
       val test: ZIO[zio.ZEnv, Throwable, (Term, Term, List[Record])] = for {
-        client <- Raft.make(disk = NioDisk(dir))
+        client <- Raft.apply(disk = NioDisk(dir))
         _ <- putStrLn("Starting....")
         _ <- client.run.fork
         _ <- putStrLn("Running....")

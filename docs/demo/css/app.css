@@ -1,0 +1,81 @@
+body {
+ margin: 0px;
+ padding: 0px;
+}
+
+.content {
+ margin: 10px;
+ padding: 10px;
+}
+
+dl {
+ vertical-align:top;
+ padding-top:10px;
+ display: inline-block;
+ width: 1000px;
+ background: #fff;
+ border: 1px solid #000;
+ margin: 10px;
+ padding: 5px 15px;
+ overflow: auto;
+}
+
+dt {
+ font-weight: bold;
+ width: 40px;
+ display: inline-block;
+ padding-left:10px;
+}
+dd {
+  display: inline-block;
+  border-right:2px solid black;
+  padding-right:10px;
+}
+
+.form-style{
+	max-width: 500px;
+	padding: 20px 12px 10px 20px;
+	font: 13px Arial, Helvetica, sans-serif;
+}
+.form-style-heading{
+	font-weight: bold;
+	font-style: italic;
+	border-bottom: 2px solid #ddd;
+	margin-bottom: 20px;
+	font-size: 15px;
+	padding-bottom: 3px;
+}
+.form-style label{
+	display: block;
+	margin: 0px 0px 15px 0px;
+}
+.form-style label > span{
+	width: 60px;
+	float: left;
+	padding-top: 4px;
+	padding-right: 5px;
+}
+.form-style input.input-field, .form-style .select-field{
+	width: 50px;
+}
+.form-style input.input-field,
+.form-style .select-field{
+	box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	border: 1px solid black;
+	box-shadow: 1px 1px 4px #EBEBEB;
+	-moz-box-shadow: 1px 1px 4px #EBEBEB;
+	-webkit-box-shadow: 1px 1px 4px #EBEBEB;
+	border-radius: 3px;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	padding: 1px;
+	outline: none;
+}
+.form-style .input-field:focus,
+.form-style .tel-number-field:focus,
+.form-style .textarea-field:focus,
+.form-style .select-field:focus{
+	border: 2px solid black;
+}

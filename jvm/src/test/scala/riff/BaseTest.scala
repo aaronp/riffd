@@ -1,8 +1,5 @@
 package riff
 
-import java.nio.file.{Files, Path, Paths}
-import java.util.UUID
-
 import org.scalatest.GivenWhenThen
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
@@ -11,12 +8,17 @@ import org.scalatest.wordspec.AnyWordSpec
 import zio._
 import zio.duration.{Duration, durationInt}
 
+import java.nio.file.{Files, Path, Paths}
+import java.util.UUID
+
 
 abstract class BaseTest extends AnyWordSpec with Matchers with GivenWhenThen with Eventually with ScalaFutures {
 
   implicit val rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
-  def testTimeout: Duration = 15.seconds
+  def zenv = rt.environment
+
+  def testTimeout: Duration = 3.seconds
 
   def shortTimeoutJava = 200.millis
 

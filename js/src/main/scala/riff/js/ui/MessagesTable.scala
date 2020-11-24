@@ -1,7 +1,9 @@
 package riff.js.ui
 
-import riff.Request.{AppendEntries, RequestVote}
-import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import org.scalajs.dom.document
+import riff.RiffRequest.{AppendEntries, RequestVote}
+import riff.RiffResponse.{AppendEntriesResponse, RequestVoteResponse}
+import riff.js.Dialog
 import riff.{Input, RaftNodeState}
 import scalatags.JsDom.all._
 
@@ -16,6 +18,7 @@ import scala.util.Try
  *
  */
 class MessagesTable {
+  val DeltaLimit = 200
 
   object headers {
     val At = "At"
@@ -59,7 +62,14 @@ class MessagesTable {
     def apply(kv: (String, String)*) = new Row(kv.toMap)
   }
 
-  private var rows = Vector[Row]()
+  private var deltas = Vector[Delta]()
+
+  private def rows(records: Seq[Delta]) = {
+    records.zipWithIndex.flatMap {
+      case (Delta(input, from, to), 0) => List(asRow(from), asRow(input), asRow(to))
+      case (Delta(input, _, to), _) => List(asRow(input), asRow(to))
+    }
+  }
 
   def asRow(state: RaftNodeState): Row = {
     Row(
@@ -112,65 +122,108 @@ class MessagesTable {
   }
 
   def onInput(input: Input, from: RaftNodeState, to: RaftNodeState): Unit = {
-    val beforeRow = asRow(from)
-    val afterRow = asRow(to)
-
     synchronized {
-      if (!rows.headOption.exists(_ == beforeRow)) {
-        rows = beforeRow +: rows
-      }
-      rows = afterRow +: asRow(input) +: rows
+      deltas = (Delta(input, from, to) +: deltas).take(DeltaLimit)
     }
     update()
   }
 
 
   def update(): Unit = {
-    val view = rows.drop(Paging.currentOffset()).take(Paging.currentLimit())
-    val all = view.map(_.render)
+    val view: Seq[Delta] = {
+      val from: Int = Paging.currentOffset()
+      val limit: Int = Paging.currentLimit()
+      deltas.drop(from).take(limit)
+    }
+    val all = rows(view).map(_.render)
     val trs = headerRow +: all
+
+    val generateTest = {
+      val buttonHint =
+        s"""The "Create Test Code" button exports the shown messages as code block for a unit test
+           |
+           |This test code can then be copy/pasted into a test for reproduction/debugging --
+           |An easy way to create test scenarios just by clicking through this UI!
+           |""".stripMargin
+      button("Create Test Code for Messages", attr("data-title") := "Can you reproduce it?", attr("data-intro") := buttonHint).render
+    }
+    generateTest.disabled = view.isEmpty
+    generateTest.onclick = (e) => {
+      e.preventDefault()
+      testDialog.innerHTML = ""
+
+      val testGen = TestGen(view.reverse)
+      //      val copyText: Element = document.createElement("p")
+      //      copyText.select()
+      //      copyText.setSelectionRange(0, 99999)
+      //      document.execCommand("copy")
+
+      val link = a(href := "https://github.com/aaronp/riffd/blob/master/jvm/src/test/scala/riff/UserScenarioTest.scala")("jvm/src/test/scala/riff/UserScenarioTest.scala").render
+      testDialog.appendChild(h2("copy/paste this test code into ", link).render)
+      testDialog.appendChild(pre(testGen).render)
+      testDialog.asInstanceOf[Dialog].showModal()
+    }
     tableDiv.innerHTML = ""
-    tableDiv.appendChild(div(
-      h4("Messages"),
-      table(trs: _*).render
-    ).render)
+
+    val hasData = view.nonEmpty
+    val showData = !Paging.canShow || hasData
+    Paging.toggle(showData)
+
+    if (true || showData) {
+      tableDiv.appendChild(div(
+        h2("Messages"),
+        div(generateTest),
+        table(trs: _*).render,
+      ).render)
+    }
   }
 
   private object Paging {
-    val offset = input(`type` := "text", value := "1").render
+    val offset = input(`type` := "text", `class` := "input-field", value := "0").render
 
-    offset.onkeyup = (e) => {
+    offset.onkeyup = _ => {
       for {
         _ <- Try(limit.value.toInt)
         _ <- Try(offset.value.toInt)
       } yield update()
     }
-    val limit = input(`type` := "text", value := "10").render
-    limit.onkeyup = (e) => {
+    val limit = input(`type` := "text", `class` := "input-field", value := "10").render
+    limit.onkeyup = _ => {
       for {
         _ <- Try(limit.value.toInt)
         _ <- Try(offset.value.toInt)
       } yield update()
     }
-    val render = span(
-      div(
-        span(span("From:"), offset)
+
+    def toggle(visible: Boolean) = {
+      val disp = if (visible) "block" else "none"
+      render.style.display = disp
+    }
+
+    val render = div(`class` := "form-style")(
+      label(`for` := offset.id)(
+        span("Offset:"), offset
       ),
-      div(
-        span(span("Limit:"), limit)
-      ),
+      label(`for` := limit.id)(
+        span("Limit:"), limit
+      )
     ).render
 
-    def currentOffset() = Try(offset.value.toInt).getOrElse(0)
+    def canShow() = currentOffset == 0 && currentLimit > 0
 
-    def currentLimit() = Try(limit.value.toInt).getOrElse(0)
+    def currentOffset(): Int = Try(offset.value.toInt).getOrElse(0)
+
+    def currentLimit(): Int = Try(limit.value.toInt).getOrElse(0)
   }
 
 
+  val testDialog = document.createElement("dialog")
+  testDialog.setAttribute("id", "testDialog")
   val tableDiv = div().render
   val render = span(
     tableDiv,
     div(Paging.render),
+    testDialog,
   ).render
 
 }

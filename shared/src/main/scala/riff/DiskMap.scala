@@ -73,7 +73,6 @@ abstract class DiskMap(namespace: String) extends Disk.Service {
    */
   protected def deleteEntries(from: Offset, to: Offset): ZIO[Any, DiskError, Unit] = {
     latestCommitted().flatMap { latest: LogCoords =>
-      println(s"Checking committed index $latest before deleting $from-$to")
       if (!latest.isFirstEntry && latest.offset <= from) {
         IO.fail(AttemptToDeleteCommitted(from, latest))
       } else {
@@ -99,7 +98,6 @@ abstract class DiskMap(namespace: String) extends Disk.Service {
 
   override def commit(commitToOffset: Offset): IO[DiskError, Unit] = {
     def kermitFrom(from: Int, to: Int) = {
-      println(s"commit $commitToOffset (max is $to) from $from")
       UIO.foreach((from to to).toList) { i =>
         upsert(keys.dataCommitted(i), Disk.boolBytes(true))
       }.unless(from >= commitToOffset.offset)

@@ -11,14 +11,14 @@ object Cluster {
   trait Service {
     def peers(): UIO[Set[NodeId]]
 
-    def broadcast(message: Request): IO[ClusterError, Unit]
+    def broadcast(message: RiffRequest): IO[ClusterError, Unit]
 
-    def reply(to: NodeId, message: Either[Request, Response]): IO[ClusterError, Unit]
+    def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]): IO[ClusterError, Unit]
   }
 
-  def broadcast(message: Request) = {
+  def broadcast(message: RiffRequest) = {
     val resetHB = message match {
-      case _: Request.AppendEntries =>
+      case _: RiffRequest.AppendEntries =>
         peers().flatMap { ids =>
           ZIO.foreach(ids)(Heartbeat.scheduleHeartbeat)
         }
@@ -29,16 +29,16 @@ object Cluster {
 
   def peers(): ZIO[Cluster, Nothing, Set[NodeId]] = ZIO.accessM[Cluster](_.get.peers())
 
-  def reply(to: NodeId, message: Either[Request, Response]) = ZIO.accessM[Cluster](_.get.reply(to, message))
+  def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]) = ZIO.accessM[Cluster](_.get.reply(to, message))
 
-  def sendRequest(to: NodeId, request: Request) = {
+  def sendRequest(to: NodeId, request: RiffRequest) = {
     for {
       _ <- reply(to, Left(request))
       _ <- Heartbeat.scheduleHeartbeat(to)
     } yield ()
   }
 
-  def sendResponse(to: NodeId, response: Response) = reply(to, Right(response))
+  def sendResponse(to: NodeId, response: RiffResponse) = reply(to, Right(response))
 
   def apply(): ZIO[Any, Nothing, Buffer] = {
     Ref.make(apply(Map.empty)).map { ref =>
@@ -49,9 +49,9 @@ object Cluster {
   final case class Buffer(ref: Ref[Service]) extends Service {
     def update(newSvc: Service): ZIO[Any, Nothing, Buffer] = ref.set(newSvc).as(this)
 
-    override def broadcast(message: Request): IO[ClusterError, Unit] = ref.get.flatMap(_.broadcast(message))
+    override def broadcast(message: RiffRequest): IO[ClusterError, Unit] = ref.get.flatMap(_.broadcast(message))
 
-    override def reply(to: NodeId, message: Either[Request, Response]): IO[ClusterError, Unit] = {
+    override def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]): IO[ClusterError, Unit] = {
       ref.get.flatMap(_.reply(to, message))
     }
 
@@ -61,7 +61,7 @@ object Cluster {
   def apply(peersById: Map[NodeId, RemoteClient]): Service = Fixed(peersById)
 
   final case class Fixed(peersById: Map[NodeId, RemoteClient]) extends Service {
-    override def broadcast(message: Request) = {
+    override def broadcast(message: RiffRequest) = {
       peersById.size match {
         case 0 => ZIO.unit
         case 1 =>
@@ -75,7 +75,7 @@ object Cluster {
       }
     }
 
-    override def reply(to: NodeId, message: Either[Request, Response]) = {
+    override def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]) = {
       peersById.get(to) match {
         case None => IO.fail(InvalidNode(to, peersById.keySet))
         case Some(remote) => remote(message).refineOrDie {
@@ -87,7 +87,7 @@ object Cluster {
     override def peers(): UIO[Set[NodeId]] = UIO(peersById.keySet)
   }
 
-  private def sendToPeer(name: NodeId, message: Request, peer: RemoteClient) = {
+  private def sendToPeer(name: NodeId, message: RiffRequest, peer: RemoteClient) = {
     peer(Left(message)).refineOrDie {
       case err => ComputerSaysNo(name, err.getMessage, Left(message))
     }
@@ -98,4 +98,4 @@ sealed trait ClusterError extends Exception
 
 final case class InvalidNode(name: NodeId, validNodes: Set[NodeId]) extends Exception(s"Can't reply to node '$name'; valid nodes are ${validNodes.mkString("[", ",", "]")}") with ClusterError
 
-final case class ComputerSaysNo(name: NodeId, message: String, input: Either[Request, Response]) extends Exception with ClusterError
+final case class ComputerSaysNo(name: NodeId, message: String, input: Either[RiffRequest, RiffResponse]) extends Exception with ClusterError
