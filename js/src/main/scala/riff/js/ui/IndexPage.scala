@@ -178,6 +178,11 @@ case class IndexPage(roleId: String,
     termDiv.innerText = s"${state.term}"
     leaderDiv.innerText = s"${state.currentLeaderId.getOrElse("?")}"
     val peers = cluster.currentPeers
+
+    def clusterDesc(nodes : Int) = nodes match {
+      case 1 => ""
+      case n => s"$n nodes"
+    }
     clusterDiv.innerText = {
       state.role match {
         case Leader(view) =>
@@ -190,9 +195,9 @@ case class IndexPage(roleId: String,
             s"$peer$clusterSuffix$leaderSuffix"
           }
 
-          s"${allPeers.toList.sorted.map(fmt).mkString(s" ${peers.size} : [", ",", "]")}"
+          s"${allPeers.toList.sorted.map(fmt).mkString(s" ${clusterDesc(peers.size)} : [", ",", "]")}"
         case _ =>
-          s"${cluster.currentPeers.toList.sorted.mkString(s"${peers.size} : [", ",", "]")}"
+          s"${cluster.currentPeers.toList.sorted.mkString(s"${clusterDesc(peers.size)} : [", ",", "]")}"
       }
     }
   }

@@ -168,14 +168,14 @@ object Timer {
       if (pcnt > 0.8) {
         "#FF0000"
       } else if (pcnt > 0.6) {
-        "#000080"
+        "#E6652B"
       } else "#00FF00"
     }
 
     val radius = 20
 
     def width(pcnt: Double) = {
-      val d = 1 + (pcnt * radius)
+      val d = 1 + (pcnt * 10)
       d.toInt
     }
 

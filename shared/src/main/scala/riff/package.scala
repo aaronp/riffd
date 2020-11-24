@@ -19,6 +19,5 @@ package object riff {
    */
   type RemoteClient = Either[Request, Response] => Task[Unit]
 
-
   type HB = Fiber[Nothing, Unit]
 }

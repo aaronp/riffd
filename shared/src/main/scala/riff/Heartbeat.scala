@@ -226,5 +226,4 @@ object Heartbeat {
       } yield ()
     }
   }
-
 }

@@ -217,5 +217,4 @@ object RiffCodec {
       c.as[Broadcast].orElse(c.as[DirectMessage])
     }
   }
-
 }
