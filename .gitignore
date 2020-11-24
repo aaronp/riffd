@@ -1,0 +1,11 @@
+.DS_Store
+*.log
+target
+.idea
+.idea_modules
+.bsp
+.dotty-ide-artifact
+.dotty-ide.json
+.vscode
+out
+shared-src

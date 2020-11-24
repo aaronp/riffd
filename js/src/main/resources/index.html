@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <script defer type="text/javascript" src="../../../../js/target/scala-2.13/riffjs-fastopt.js"></script>
+    <script defer type="text/javascript" src="../../../../js/target/scala-2.13/riffjs-fastopt/main.js"></script>
+</head>
+<body onload="IndexPage('role', 'nodeid', 'canvas', 'clusterId', 'term', 'leader', 'log', 'appendText', 'buttons', 'disk', 'messages')">
+
+    <div id="target"></div>
+    <div><canvas id="canvas" style="display: block" width="100" height="100"/></div>
+    <div><span id="role"></span>:<span id="nodeid"></span></div>
+    <div>Cluster:<span id="clusterId"></span></div>
+    <div>Term:<span id="term"></span></div>
+    <div>Current Leader:<span id="leader"></span></div>
+    <div>Log:<span id="log"></span></div>
+    <div>
+        <div>Append:</div>
+        <textarea id="appendText" rows="4" cols="80"></textarea>
+    </div>
+    <div id="buttons"></div>
+    <!-- shows the disk table -->
+    <div id="disk"></div>
+    <div id="messages"></div>
+</body>
+</html>
