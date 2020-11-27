@@ -1,50 +1,58 @@
 package riff.js.ui
 
-import org.scalajs.dom.html.TextArea
+import org.scalajs.dom.html.{Div, TextArea}
 import org.scalajs.dom.{document, window}
 import riff.Role.Leader
-import riff._
-import riff.js.ui.Main.implicits._
+import riff.{ClusterLocal, DiskError, Input, Logging, NodeId, Raft, RaftNodeState, Request, Response}
 import riff.js.{BroadcastChannel, JSDisk, RiffJS}
+import riff.js.ui.Main.implicits.asRichZIO
 import riff.json.RiffCodec.{Broadcast, DirectMessage}
 import scalatags.JsDom.all._
-import zio.console.putStrLn
+import zio.{Task, UIO, ZIO}
 import zio.duration.durationInt
-import zio.{Task, ZIO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.scalajs.js.annotation.JSExportTopLevel
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Random, Success}
 
 @JSExportTopLevel("IndexPage")
-case class IndexPage(roleId: String,
-                     nodeid: String,
-                     canvasId: String,
-                     clusterId: String,
-                     termId: String,
-                     leaderId: String,
-                     logId: String,
-                     appendTextId: String,
-                     buttonsId: String,
-                     diskId: String,
-                     messagesId: String) {
-  private val divFor = (document.getElementById _).andThen { x =>
-    require(x != null);
-    x
-  }
+case class IndexPage(targetDivId: String) {
+  val roleDiv = span().render
+  val ourNodeDiv = span().render
+  val clusterDiv = span().render
+  val termDiv = span().render
+  val leaderDiv = span().render
+  val logDiv = div().render
+  val appendTextTextArea = textarea().render // TextArea
+  val buttonRowDiv = div().render
+  val diskDiv = div().render
+  val messagesDiv = div().render
 
-  val heartbeatTimer = Timer(canvasId).value()
-  val roleIdDiv = divFor(roleId)
-  val ourNodeDiv = divFor(nodeid)
-  val clusterDiv = divFor(clusterId)
-  val termDiv = divFor(termId)
-  val leaderDiv = divFor(leaderId)
-  val logDiv = divFor(logId)
-  val appendTextTextArea = divFor(appendTextId).asInstanceOf[TextArea]
-  val buttonRowDiv = divFor(buttonsId)
-  val diskDiv = divFor(diskId)
-  val messagesDiv = divFor(messagesId)
+  //<div style="display: inline; float: right; padding:20px"><canvas id="canvas" style="display: block" width="100" height="100"/></div>
+
+  val canvasElm = canvas(id := "canvas", style := "display: block", width := "100", height := "100").render
+
+  val targetDiv = document.getElementById(targetDivId).asInstanceOf[Div]
+
+  targetDiv.innerHTML = ""
+  targetDiv.appendChild(div()(
+    div(style := "display: inline; float: right; padding-right:10px")(canvasElm),
+    div(roleDiv, ":", ourNodeDiv),
+    div("Cluster:", clusterDiv),
+    div("Term:", termDiv),
+    div("Leader:", leaderDiv),
+    logDiv,
+    div(
+      h2("Data to append:"),
+      appendTextTextArea),
+    buttonRowDiv,
+    diskDiv,
+    messagesDiv
+  ).render)
+
+  val heartbeatFreq = UIO(Random.nextLong(10000) + 4000)
+  val heartbeatTimer = Timer(canvasElm, heartbeatFreq).value()
 
   val messagesTable = new MessagesTable()
   messagesDiv.appendChild(messagesTable.render)
@@ -53,7 +61,7 @@ case class IndexPage(roleId: String,
   val logger = {
     val roleChange = Logging.withRoleChange {
       case (_, to) =>
-        roleIdDiv.innerText = to.role.name
+        roleDiv.innerText = to.role.name
         refresh.delay(100.millis).future()
     }
     val requestResponse = Logging.withUpdate {
@@ -82,11 +90,10 @@ case class IndexPage(roleId: String,
   init.future().onComplete {
     case Success(raft: Raft) =>
       raftJS = Some(raft)
-      roleIdDiv.innerText = raft.currentRole().value().name
+      roleDiv.innerText = raft.currentRole().value().name
       val tick = for {
         _ <- heartbeatTimer.update()
         updated <- raft.applyNextInput
-        _ <- putStrLn(s"updated: $updated")
         _ <- refresh.unless(!updated)
       } yield ()
 
@@ -113,32 +120,34 @@ case class IndexPage(roleId: String,
     _ <- ZIO.fromOption(raftJS).flatMap(r => r.append(data)).either
   } yield ()
 
+  val buttonStyle = "margin:8px; padding:8px"
+
   appendTextTextArea.onkeyup = (e) => {
     if (e.keyCode == 13) {
       e.preventDefault()
       onAppend()
     }
   }
-  val appendButton = button()("Append").render
+  val appendButton = button(style := buttonStyle)("Append").render
   appendButton.onclick = e => {
     e.preventDefault()
     onAppend().future()
   }
 
-  val pauseButton = button()("⏸").render
+  val pauseButton = button(style := buttonStyle)("⏸").render
   pauseButton.onclick = e => {
     e.preventDefault()
     cluster.togglePause()
     pauseButton.innerText = if (cluster.isPaused()) "▶️" else "⏸"
   }
 
-  val triggerVoteButton = button()("Trigger Vote").render
+  val triggerVoteButton = button(style := buttonStyle)("Trigger Vote").render
   triggerVoteButton.onclick = e => {
     e.preventDefault()
     raftJS.foreach(_.push(Input.HeartbeatTimeout(None)).future())
   }
 
-  val addNodeButton = button()("Add Node To Cluster").render
+  val addNodeButton = button(style := buttonStyle)("Add Node To Cluster").render
   addNodeButton.onclick = e => {
     e.preventDefault()
     window.open(window.location.pathname)
@@ -179,14 +188,14 @@ case class IndexPage(roleId: String,
     leaderDiv.innerText = s"${state.currentLeaderId.getOrElse("?")}"
     val peers = cluster.currentPeers
 
-    def clusterDesc(nodes : Int) = nodes match {
+    def clusterDesc(nodes: Int) = nodes match {
       case 1 => ""
-      case n => s"$n nodes"
+      case n => s" $n nodes"
     }
+
     clusterDiv.innerText = {
       state.role match {
         case Leader(view) =>
-
           val allPeers = cluster.currentPeers ++ view.keySet
 
           def fmt(peer: NodeId) = {

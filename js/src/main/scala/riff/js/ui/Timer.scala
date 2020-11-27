@@ -156,13 +156,6 @@ object Timer {
   type Expiry = Long
   type Range = (Started, Expiry)
 
-
-  def apply(canvasId: String): ZIO[Clock, Nothing, Timer] = {
-    val default = UIO(Random.nextLong(10000) + 4000)
-    val canvas: Canvas = document.getElementById(canvasId).asInstanceOf[Canvas]
-    apply(canvas, default)
-  }
-
   def apply(canvas: Canvas, nextExpiryMs: UIO[Long]): ZIO[Clock, Nothing, Timer] = {
     def color(pcnt: Double) = {
       if (pcnt > 0.8) {

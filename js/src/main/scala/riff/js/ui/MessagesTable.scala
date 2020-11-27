@@ -17,6 +17,10 @@ import scala.util.Try
  */
 class MessagesTable {
 
+  case class Delta(input: Input, from: RaftNodeState, to: RaftNodeState) {
+
+  }
+
   object headers {
     val At = "At"
     val Term = "Term"
@@ -59,7 +63,14 @@ class MessagesTable {
     def apply(kv: (String, String)*) = new Row(kv.toMap)
   }
 
-  private var rows = Vector[Row]()
+  private var deltas = Vector[Delta]()
+
+  private def rows = {
+    deltas.zipWithIndex.flatMap {
+      case (Delta(input, from, to), 0) => List(asRow(from), asRow(input), asRow(to))
+      case (Delta(input, from, to), _) => List(asRow(input), asRow(to))
+    }
+  }
 
   def asRow(state: RaftNodeState): Row = {
     Row(
@@ -116,10 +127,7 @@ class MessagesTable {
     val afterRow = asRow(to)
 
     synchronized {
-      if (!rows.headOption.exists(_ == beforeRow)) {
-        rows = beforeRow +: rows
-      }
-      rows = afterRow +: asRow(input) +: rows
+      deltas = Delta(input, from, to) +: deltas
     }
     update()
   }
