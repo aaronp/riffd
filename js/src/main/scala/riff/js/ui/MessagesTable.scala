@@ -19,15 +19,6 @@ import scala.util.Try
  */
 class MessagesTable {
 
-  /**
-   * We hook into our input loop, capturing the before/afture state
-   *
-   * @param input
-   * @param from
-   * @param to
-   */
-  case class Delta(input: Input, from: RaftNodeState, to: RaftNodeState)
-
   object headers {
     val At = "At"
     val Term = "Term"
@@ -146,8 +137,6 @@ class MessagesTable {
     val all = rows(view).map(_.render)
     val trs = headerRow +: all
 
-    val testDialog = document.createElement("dialog")
-    testDialog.setAttribute("id", "testDialog")
 
     val generateTest = button("Create Test").render
     generateTest.onclick = (e) => {
@@ -159,8 +148,8 @@ class MessagesTable {
     tableDiv.innerHTML = ""
     tableDiv.appendChild(div(
       h4("Messages"),
+      div(generateTest),
       table(trs: _*).render,
-      div(generateTest)
     ).render)
   }
 
@@ -195,11 +184,13 @@ class MessagesTable {
   }
 
 
+  val testDialog = document.createElement("dialog")
+  testDialog.setAttribute("id", "testDialog")
   val tableDiv = div().render
   val render = span(
     tableDiv,
     div(Paging.render),
-    div(Paging.render),
+    testDialog,
   ).render
 
 }

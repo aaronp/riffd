@@ -6,7 +6,7 @@ import java.util.Base64
 import io.circe.Decoder.Result
 import io.circe._
 import io.circe.syntax._
-import riff.Input.UserInput
+import riff.Input.{Append, HeartbeatTimeout, UserInput}
 import riff.Request.{AppendEntries, RequestVote}
 import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
 import riff.Role.{Candidate, Follower, Leader}
@@ -153,6 +153,28 @@ object RiffCodec {
         fromNode <- c.downField("fromNode").as[String]
         response <- c.downField("response").as[Response]
       } yield UserInput(fromNode, Right(response))
+    }
+  }
+
+  object InputCodec extends Codec[Input] {
+    override def apply(c: HCursor): Result[Input] = {
+      def asHB = c.downField("heartbeat").as[Option[NodeId]].map(HeartbeatTimeout.apply)
+
+      def asAppend = c.downField("append").as[String].map { base64data =>
+        val bytes = Base64.getDecoder.decode(base64data)
+        Append(bytes)
+      }
+
+      UserInputCodec(c).orElse(asHB).orElse(asAppend)
+
+    }
+
+    override def apply(value: Input): Json = {
+      value match {
+        case userInput: UserInput => UserInputCodec(userInput)
+        case HeartbeatTimeout(opt) => Json.obj("heartbeat" -> opt.asJson)
+        case Append(data) => Json.obj("append" -> Base64.getEncoder.encodeToString(data).asJson)
+      }
     }
   }
 
