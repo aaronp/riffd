@@ -1,7 +1,9 @@
 package riff.js.ui
 
+import org.scalajs.dom.document
 import riff.Request.{AppendEntries, RequestVote}
 import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import riff.js.Dialog
 import riff.{Input, RaftNodeState}
 import scalatags.JsDom.all._
 
@@ -17,9 +19,14 @@ import scala.util.Try
  */
 class MessagesTable {
 
-  case class Delta(input: Input, from: RaftNodeState, to: RaftNodeState) {
-
-  }
+  /**
+   * We hook into our input loop, capturing the before/afture state
+   *
+   * @param input
+   * @param from
+   * @param to
+   */
+  case class Delta(input: Input, from: RaftNodeState, to: RaftNodeState)
 
   object headers {
     val At = "At"
@@ -65,10 +72,10 @@ class MessagesTable {
 
   private var deltas = Vector[Delta]()
 
-  private def rows = {
-    deltas.zipWithIndex.flatMap {
+  private def rows(records: Seq[Delta]) = {
+    records.zipWithIndex.flatMap {
       case (Delta(input, from, to), 0) => List(asRow(from), asRow(input), asRow(to))
-      case (Delta(input, from, to), _) => List(asRow(input), asRow(to))
+      case (Delta(input, _, to), _) => List(asRow(input), asRow(to))
     }
   }
 
@@ -123,9 +130,6 @@ class MessagesTable {
   }
 
   def onInput(input: Input, from: RaftNodeState, to: RaftNodeState): Unit = {
-    val beforeRow = asRow(from)
-    val afterRow = asRow(to)
-
     synchronized {
       deltas = Delta(input, from, to) +: deltas
     }
@@ -134,13 +138,29 @@ class MessagesTable {
 
 
   def update(): Unit = {
-    val view = rows.drop(Paging.currentOffset()).take(Paging.currentLimit())
-    val all = view.map(_.render)
+    val view: Seq[Delta] = {
+      val from: Int = Paging.currentOffset()
+      val limit: Int = Paging.currentLimit()
+      deltas.drop(from).take(limit)
+    }
+    val all = rows(view).map(_.render)
     val trs = headerRow +: all
+
+    val testDialog = document.createElement("dialog")
+    testDialog.setAttribute("id", "testDialog")
+
+    val generateTest = button("Create Test").render
+    generateTest.onclick = (e) => {
+      e.preventDefault()
+      testDialog.innerHTML = ""
+      testDialog.innerHTML = s"<p><${Paging.currentOffset()} to ${Paging.currentLimit()}/p>"
+      testDialog.asInstanceOf[Dialog].showModal()
+    }
     tableDiv.innerHTML = ""
     tableDiv.appendChild(div(
       h4("Messages"),
-      table(trs: _*).render
+      table(trs: _*).render,
+      div(generateTest)
     ).render)
   }
 
@@ -178,6 +198,7 @@ class MessagesTable {
   val tableDiv = div().render
   val render = span(
     tableDiv,
+    div(Paging.render),
     div(Paging.render),
   ).render
 

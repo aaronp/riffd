@@ -92,8 +92,8 @@ object Raft {
         commitIndex.offset,
         maxRecordsToSend,
         Role.Follower,
-        clusterRetrySchedule,
         None,
+        clusterRetrySchedule,
         clusterSize)
     }
 

@@ -1,5 +1,6 @@
 package riff.json
 
+import java.time.Instant
 import java.util.Base64
 
 import io.circe.Decoder.Result
@@ -8,12 +9,12 @@ import io.circe.syntax._
 import riff.Input.UserInput
 import riff.Request.{AppendEntries, RequestVote}
 import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import riff.Role.{Candidate, Follower, Leader}
 import riff._
 
 object RiffCodec {
 
   sealed trait AddressedMessage
-
 
   implicit object LogEntryCodec extends Codec[LogEntry] {
     override def apply(value: LogEntry): Json = {
@@ -203,6 +204,7 @@ object RiffCodec {
         } yield DirectMessage(from, to, Right(message))
       }
     }
+
   }
 
   implicit object AddressedMessageCodec extends Codec[AddressedMessage] {
@@ -217,4 +219,98 @@ object RiffCodec {
       c.as[Broadcast].orElse(c.as[DirectMessage])
     }
   }
+
+  implicit object ClusterPeerCodec extends Codec[ClusterPeer] {
+    override def apply(c: HCursor): Result[ClusterPeer] = {
+      for {
+        id <- c.downField("id").as[NodeId]
+        nextIndex <- c.downField("nextIndex").as[Offset]
+        matchIndex <- c.downField("matchIndex").as[Offset]
+        lastMessageReceived <- c.downField("lastMessageReceived").as[Option[Instant]]
+        lastHearbeatSent <- c.downField("lastHearbeatSent").as[Option[Instant]]
+      } yield ClusterPeer(id, nextIndex, matchIndex, lastMessageReceived, lastHearbeatSent)
+    }
+
+    override def apply(peer: ClusterPeer): Json = {
+      import peer._
+      Json.obj(
+        "id" -> id.asJson,
+        "nextIndex" -> nextIndex.asJson,
+        "matchIndex" -> matchIndex.asJson,
+        "lastMessageReceived" -> lastMessageReceived.asJson,
+        "lastHearbeatSent" -> lastHearbeatSent.asJson
+      )
+    }
+  }
+
+  implicit object LeaderCodec extends Codec[Leader] {
+    override def apply(c: HCursor): Result[Leader] = {
+      c.as[Map[NodeId, ClusterPeer]].map(Leader.apply)
+    }
+
+    override def apply(value: Leader): Json = {
+      value.clusterView.asJson
+    }
+  }
+
+  implicit object CandidateCodec extends Codec[Candidate] {
+    override def apply(c: HCursor): Result[Candidate] = {
+      for {
+        votesFor <- c.downField("votesFor").as[Set[String]]
+        votesAgainst <- c.downField("votesAgainst").as[Set[String]]
+        peers <- c.downField("peers").as[Set[String]]
+      } yield Candidate(votesFor, votesAgainst, peers)
+    }
+
+    override def apply(value: Candidate): Json = {
+      Json.obj(
+        "votesFor" -> value.votesFor.asJson,
+        "votesAgainst" -> value.votesAgainst.asJson,
+        "peers" -> value.peers.asJson
+      )
+    }
+  }
+
+  implicit object RoleCodec extends Codec[Role] {
+    override def apply(c: HCursor): Result[Role] = {
+      c.as[String] match {
+        case Right("Follower") => Right(Follower)
+        case _ => CandidateCodec(c).orElse(LeaderCodec(c))
+      }
+    }
+
+    override def apply(bread: Role): Json = {
+      bread match {
+        case Follower => "Follower".asJson
+        case value: Candidate => CandidateCodec(value)
+        case value: Leader => LeaderCodec(value)
+      }
+    }
+  }
+
+
+  case class Snapshot(ourNodeId: NodeId,
+                      term: Term,
+                      commitIndex: Offset, // volatile state of last committed index
+                      lastApplied: Offset, //index of highest log entry applied to state machine (initialized to 0, increases monotonically)
+                      maxSendBatchSize: Int,
+                      role: Role,
+                      currentLeaderId: Option[NodeId])
+
+  object Snapshot {
+    implicit val codec = io.circe.generic.semiauto.deriveCodec[Snapshot]
+
+    def appply(state: RaftNodeState): Snapshot = {
+      import state._
+      new Snapshot(ourNodeId,
+        term,
+        commitIndex,
+        lastApplied,
+        maxSendBatchSize,
+        role,
+        currentLeaderId
+      )
+    }
+  }
+
 }
