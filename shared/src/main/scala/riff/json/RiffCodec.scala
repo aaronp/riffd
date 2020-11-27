@@ -166,7 +166,6 @@ object RiffCodec {
       }
 
       UserInputCodec(c).orElse(asHB).orElse(asAppend)
-
     }
 
     override def apply(value: Input): Json = {
@@ -322,7 +321,7 @@ object RiffCodec {
   object Snapshot {
     implicit val codec = io.circe.generic.semiauto.deriveCodec[Snapshot]
 
-    def appply(state: RaftNodeState): Snapshot = {
+    def apply(state: RaftNodeState): Snapshot = {
       import state._
       new Snapshot(ourNodeId,
         term,

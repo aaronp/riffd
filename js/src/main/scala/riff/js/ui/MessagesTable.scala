@@ -142,7 +142,7 @@ class MessagesTable {
     generateTest.onclick = (e) => {
       e.preventDefault()
       testDialog.innerHTML = ""
-      testDialog.innerHTML = s"<p><${Paging.currentOffset()} to ${Paging.currentLimit()}/p>"
+      testDialog.appendChild(pre(TestGen(view)).render)
       testDialog.asInstanceOf[Dialog].showModal()
     }
     tableDiv.innerHTML = ""
