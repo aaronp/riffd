@@ -17,7 +17,7 @@ import scala.math.Ordering.Implicits.infixOrderingOps
  * @param role                 our current [[Role]]
  * @param clusterRetrySchedule a schedule used to for retrying failed [[Cluster]] sends (TODO: remove this and just incorporate in the passed-in [[Cluster]])
  * @param currentLeaderId      the known leader in this term
- * @param clusterSize          this was added to prevent cluster nodes from electing themselves before peers are up -- e.g. to prevent single-node clusters
+ * @param minClusterSize          this was added to prevent cluster nodes from electing themselves before peers are up -- e.g. to prevent single-node clusters
  */
 final case class RaftNodeState(ourNodeId: NodeId,
                                term: Term,
@@ -25,9 +25,9 @@ final case class RaftNodeState(ourNodeId: NodeId,
                                lastApplied: Offset, //index of highest log entry applied to state machine (initialized to 0, increases monotonically)
                                maxSendBatchSize: Int,
                                role: Role,
-                               clusterRetrySchedule: Schedule[Any, Any, Duration],
                                currentLeaderId: Option[NodeId],
-                               clusterSize: Option[Int]) {
+                               clusterRetrySchedule: Schedule[Any, Any, Duration],
+                               minClusterSize: Option[Int]) {
 
   def update(input: Input): ZIO[FullEnv, RaftNodeError, RaftNodeState] = {
     input match {
@@ -236,7 +236,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
       candidateState = Role.Candidate(ourNodeId, newTerm, peers)
       _ <- Disk.voteFor(newTerm, ourNodeId).orDie
       // we may be in a single-node cluster, so check if we can be the leader of our own destiny!
-      minQuarumPossible = clusterSize.fold(true)(_ <= peers.size)
+      minQuarumPossible = minClusterSize.fold(true)(_ <= peers.size)
       newNode <- if (minQuarumPossible && candidateState.canBecomeLeader) {
         for {
           newState <- becomeLeader(newTerm, candidateState)

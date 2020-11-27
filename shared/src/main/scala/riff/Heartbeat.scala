@@ -210,8 +210,6 @@ object Heartbeat {
           val nextVersion = byKey.getOrElse(key, -1L) + 1L
           nextVersion -> byKey.updated(key, nextVersion)
         }
-
-        _ <- putStrLn(s"enqueue($key) after $time")
         _ <- scheduleAfter(key, version, time)
       } yield time
     }

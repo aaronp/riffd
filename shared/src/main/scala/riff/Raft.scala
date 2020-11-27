@@ -36,12 +36,10 @@ final case class Raft(nodeRef: Ref[RaftNodeState],
       UIO(heartbeat).toLayer
   }
 
-  def applyInput(input: Input) = {
+  def applyInput(input: Input): ZIO[FullEnv, RaftNodeError, Unit] = {
     for {
       node <- nodeRef.get
-      _ <- putStrLn(s"applying ${input} to $node")
       updated <- node.update(input)
-      _ <- putStrLn(s"----> ${input} yields $updated")
       _ <- Logging.onUpdate(input, node, updated)
       _ <- nodeRef.set(updated)
     } yield ()
@@ -92,8 +90,8 @@ object Raft {
         commitIndex.offset,
         maxRecordsToSend,
         Role.Follower,
-        clusterRetrySchedule,
         None,
+        clusterRetrySchedule,
         clusterSize)
     }
 

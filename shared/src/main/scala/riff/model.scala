@@ -2,11 +2,12 @@ package riff
 
 import java.nio.charset.StandardCharsets
 import java.time.{Duration, Instant}
+import java.util
 import java.util.Base64
 
 import zio._
 import zio.duration.durationInt
-import zio.random.Random
+import zio.random.{Random, nextInt}
 
 import scala.language.implicitConversions
 
@@ -195,12 +196,19 @@ final case class ClusterPeer(id: NodeId,
                              nextIndex: Offset = Offset(0),
                              matchIndex: Offset = Offset(0),
                              lastMessageReceived: Option[Instant] = None,
-                             lastHearbeatSent: Option[Instant] = None) {
+                             lastHeartbeatSent: Option[Instant] = None) {
+  override def hashCode(): Int = Seq(id, nextIndex, matchIndex).hashCode()
+
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case ClusterPeer(`id`, `nextIndex`, `matchIndex`, _, _) => true
+      case _ => false
+    }
+  }
   override def toString: NodeId = s"match: ${matchIndex.offset}, next: ${nextIndex.offset}"
 
   def onHeartbeat(now: Instant): ClusterPeer = {
-    copy(lastMessageReceived = Option(now),
-      lastHearbeatSent = Option(now))
+    copy(lastMessageReceived = Option(now), lastHeartbeatSent = Option(now))
   }
 
   def update(now: Instant, success: Boolean, offset: Offset) = {

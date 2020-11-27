@@ -1,7 +1,9 @@
 package riff.js.ui
 
+import org.scalajs.dom.document
 import riff.Request.{AppendEntries, RequestVote}
 import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import riff.js.Dialog
 import riff.{Input, RaftNodeState}
 import scalatags.JsDom.all._
 
@@ -59,7 +61,14 @@ class MessagesTable {
     def apply(kv: (String, String)*) = new Row(kv.toMap)
   }
 
-  private var rows = Vector[Row]()
+  private var deltas = Vector[Delta]()
+
+  private def rows(records: Seq[Delta]) = {
+    records.zipWithIndex.flatMap {
+      case (Delta(input, from, to), 0) => List(asRow(from), asRow(input), asRow(to))
+      case (Delta(input, _, to), _) => List(asRow(input), asRow(to))
+    }
+  }
 
   def asRow(state: RaftNodeState): Row = {
     Row(
@@ -112,27 +121,35 @@ class MessagesTable {
   }
 
   def onInput(input: Input, from: RaftNodeState, to: RaftNodeState): Unit = {
-    val beforeRow = asRow(from)
-    val afterRow = asRow(to)
-
     synchronized {
-      if (!rows.headOption.exists(_ == beforeRow)) {
-        rows = beforeRow +: rows
-      }
-      rows = afterRow +: asRow(input) +: rows
+      deltas = Delta(input, from, to) +: deltas
     }
     update()
   }
 
 
   def update(): Unit = {
-    val view = rows.drop(Paging.currentOffset()).take(Paging.currentLimit())
-    val all = view.map(_.render)
+    val view: Seq[Delta] = {
+      val from: Int = Paging.currentOffset()
+      val limit: Int = Paging.currentLimit()
+      deltas.drop(from).take(limit)
+    }
+    val all = rows(view).map(_.render)
     val trs = headerRow +: all
+
+
+    val generateTest = button("Create Test").render
+    generateTest.onclick = (e) => {
+      e.preventDefault()
+      testDialog.innerHTML = ""
+      testDialog.appendChild(pre(TestGen(view.reverse)).render)
+      testDialog.asInstanceOf[Dialog].showModal()
+    }
     tableDiv.innerHTML = ""
     tableDiv.appendChild(div(
-      h4("Messages"),
-      table(trs: _*).render
+      h2("Messages"),
+      div(generateTest),
+      table(trs: _*).render,
     ).render)
   }
 
@@ -167,10 +184,13 @@ class MessagesTable {
   }
 
 
+  val testDialog = document.createElement("dialog")
+  testDialog.setAttribute("id", "testDialog")
   val tableDiv = div().render
   val render = span(
     tableDiv,
     div(Paging.render),
+    testDialog,
   ).render
 
 }

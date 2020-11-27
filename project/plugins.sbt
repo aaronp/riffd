@@ -1,4 +1,4 @@
-addSbtPlugin("ch.epfl.lamp"           % "sbt-dotty"                 % "0.4.2")
+addSbtPlugin("ch.epfl.lamp"           % "sbt-dotty"                 % "0.4.6")
 addSbtPlugin("com.typesafe.sbt"       % "sbt-git"                   % "0.9.3")
 addSbtPlugin("com.timushev.sbt"       % "sbt-updates"               % "0.5.1")
 addSbtPlugin("org.scala-js"           % "sbt-scalajs"               % "1.3.1")
