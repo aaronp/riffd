@@ -1,48 +1,61 @@
 package riff.js.ui
 
-import org.scalajs.dom.Element
-import riff.{NodeId, RaftNodeState}
+import org.scalajs.dom.{Element, document}
 import riff.Role.{Candidate, Follower, Leader}
-import scalatags.JsDom.all.{canvas, dd, dt}
-import scalatags.JsDom.all._
+import riff.{NodeId, RaftNodeState, Role}
+import scalatags.JsDom.all.{canvas, _}
 
 case class Header(nodeName: String) {
 
-  private def value(): Element = dd().render.asInstanceOf[Element]
+  private def value(): Element = document.createElement("dd")
 
-  val role = dt("Role:").render.asInstanceOf[Element]
+  private def dt(label: String): Element = {
+    val elm = document.createElement("dt")
+    elm.innerText = label
+    elm
+  }
+
+  val roleElm = dt("Role:")
   val ourNodeId = value()
   ourNodeId.innerText = nodeName
 
-  val cluster = value()
-  val term = value()
-  val leader = value()
-
+  val clusterElm = value()
+  val termElm = value()
+  val leaderElm = value()
   val canvasElm = canvas(id := "canvas", style := "display: inline-block;width:80px").render
 
-  def updateRole(name: String) = {
-    role.innerText = name
+  lazy val banner = div(style := "display: inline-block; vertical-align: top;")(
+    div(style := "display: inline-block; padding:10px")(canvasElm),
+    dl(style := "display: inline-block")(
+      roleElm, ourNodeId,
+      dt("Leader:"), leaderElm,
+      dt("Term:"), termElm,
+      dt("Cluster:"), clusterElm
+    )).render
+
+  def updateRole(newRole: Role) = {
+    roleElm.innerText = newRole.name
+    val bannerStyle = newRole match {
+      case _: Leader => "background-color:red"
+      case _: Candidate => "background-color:orange"
+      case Follower => "background-color:green"
+    }
+    banner.style = bannerStyle
   }
 
   def updateFromState(state: RaftNodeState, currentPeers: Set[NodeId]): Unit = {
     ourNodeId.innerText = s"${state.ourNodeId}"
-    term.innerText = s"${state.term}"
+    termElm.innerText = s"${state.term}"
 
     def clusterDesc(nodes: Int) = nodes match {
       case 1 => ""
       case n => s" $n nodes"
     }
 
+    updateRole(state.role)
+    leaderElm.innerText = if (state.role.isLeader) "US!" else s" ${state.currentLeaderId.getOrElse("?")}"
 
-    val bannerStyle = state.role match {
-      case _: Leader => "background-color:red"
-      case _: Candidate => "background-color:orange"
-      case Follower => "background-color:green"
-    }
-    leader.innerText = if (state.role.isLeader) "" else s" Leader: ${state.currentLeaderId.getOrElse("?")}"
-    banner.style = bannerStyle
-
-    cluster.innerText = {
+    clusterElm.innerText = {
       state.role match {
         case Leader(view) =>
           val allPeers = currentPeers ++ view.keySet
@@ -59,24 +72,4 @@ case class Header(nodeName: String) {
       }
     }
   }
-
-  //
-  //  val bannerDiv = div(style := "display: inline-block; vertical-align: top;")(
-  //    div(style := "display: inline-block")(canvasElm),
-  //    div(id := "RoleAndCluster", style := "display: inline-block")(
-  //      span(style := blockStyle)(b(style := blockStyle)(roleDiv), ":", ourNodeDiv),
-  //      span(style := blockStyle)(span(style := blockStyle)(b("Cluster:")), clusterDiv)),
-  //    div(id := "TermAndLeader", style := "display: inline-block")(
-  //      span(style := blockStyle)(b("Term:"), termDiv),
-  //      span(style := blockStyle)(leaderDiv)),
-  //  ).render
-
-  val banner = div(style := "display: inline-block; vertical-align: top;")(
-    div(style := "display: inline-block")(canvasElm),
-    dl(
-      role, ourNodeId,
-      dt("Leader:"), leader,
-      dt("Term:"), term,
-      dt("Cluster:"), cluster
-    )).render
 }

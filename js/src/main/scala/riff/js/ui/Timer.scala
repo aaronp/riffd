@@ -12,9 +12,12 @@ import zio.clock._
 import zio.console.Console
 import zio.duration.{Duration, durationInt}
 
+/**
+ * A timer which can draw the time remaining, as well as expose a [[Heartbeat.Service]]
+ */
 case class Timer(canvas: Canvas,
                  nextTimeout: Ref[Timer.Range],
-                 nextExpiryMs: UIO[Long],
+                 //                 nextExpiryMs: UIO[Long],
                  radius: Int,
                  color: Double => String,
                  width: Double => Int
@@ -56,7 +59,6 @@ case class Timer(canvas: Canvas,
     val remaining = expiry - now
     val totalDuration = expiry - started
     if (remaining <= 0) {
-      //      reset()
       UIO(renderCircle(0, totalDuration))
     } else {
       UIO(renderCircle(remaining, totalDuration))
@@ -71,17 +73,14 @@ case class Timer(canvas: Canvas,
     } yield ()
   }
 
-  def reset() = nextExpiryMs.flatMap(resetAfter)
-
-  def resetAfter(delayInMS: Long): ZIO[Clock, Nothing, Unit] = for {
+  def updateNextTimeoutEpiry(delayInMS: Long): ZIO[Clock, Nothing, Unit] = for {
     now <- currentTime(TimeUnit.MILLISECONDS)
     expiry = now + delayInMS
     _ <- nextTimeout.set(now -> expiry)
   } yield renderCircle(delayInMS, delayInMS)
 
 
-  def heartbeatService(followerRange: TimeRange = TimeRange(10.seconds, 15.seconds),
-                       leaderHBFreq: Duration = 5.seconds) = {
+  def heartbeatService(followerRange: TimeRange, leaderHBFreq: Duration) = {
     for {
       queue <- ZIO.service[Queue[Input]]
       ref <- Ref.make[Option[State]](Option.empty)
@@ -94,10 +93,10 @@ case class Timer(canvas: Canvas,
                          currentStateRef: Ref[Option[State]]
                         ): Heartbeat.Service = {
     new Heartbeat.Service {
-      def tick() = {
-        resetAfter(leaderHBFrequency.toMillis).future()
+      def onTimeout() = {
         currentStateRef.get.value() match {
           case Some(LeaderState(_, peers)) =>
+            updateNextTimeoutEpiry(leaderHBFrequency.toMillis).future()
             val inputs = peers.map { peer =>
               Input.HeartbeatTimeout(Some(peer))
             }
@@ -113,15 +112,18 @@ case class Timer(canvas: Canvas,
 
         def resetFollower(): Option[State] = {
           val timeoutMS = followerRange.nextDuration.value()
-          resetAfter(timeoutMS).future()
-          val handle = window.setTimeout(() => tick, timeoutMS)
+          updateNextTimeoutEpiry(timeoutMS).future()
+          // eval 'onTimeout' after the follower timeout
+          val handle = window.setTimeout(() => onTimeout, timeoutMS)
           Option(FollowerState(handle))
         }
 
         def startLeader(peer: NodeId): Option[State] = {
           val timeoutMS = leaderHBFrequency.toMillis
-          resetAfter(leaderHBFrequency.toMillis).future()
-          val handle = window.setInterval(() => tick, timeoutMS)
+          updateNextTimeoutEpiry(leaderHBFrequency.toMillis).future()
+
+          // timeout w/ the leader timeout at a fixed frequency
+          val handle = window.setInterval(() => onTimeout, timeoutMS)
           Option(LeaderState(handle, Set(peer)))
         }
 
@@ -153,7 +155,7 @@ object Timer {
   type Expiry = Long
   type Range = (Started, Expiry)
 
-  def apply(canvas: Canvas, nextExpiryMs: UIO[Long]): ZIO[Clock, Nothing, Timer] = {
+  def apply(canvas: Canvas, nextExpiryMs: Long): ZIO[Clock, Nothing, Timer] = {
     def color(pcnt: Double) = {
       if (pcnt > 0.8) {
         "#FF0000"
@@ -164,16 +166,12 @@ object Timer {
 
     val radius = 40
 
-    def width(pcnt: Double) = {
-      val d = 1 + (pcnt * 10)
-      d.toInt
-    }
+    def width(pcnt: Double) = 8
 
     for {
       time <- currentTime(TimeUnit.SECONDS)
-      next <- nextExpiryMs
-      ref <- Ref.make(time -> (time + next))
-    } yield new Timer(canvas, ref, nextExpiryMs, radius, color, width)
+      ref <- Ref.make(time -> (time + nextExpiryMs))
+    } yield new Timer(canvas, ref, radius, color, width)
   }
 
 

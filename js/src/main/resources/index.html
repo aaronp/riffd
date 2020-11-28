@@ -3,23 +3,66 @@
 <head>
     <script defer type="text/javascript" src="../../../../js/target/scala-2.13/riffjs-fastopt.js"></script>
     <script defer type="text/javascript" src="../../../../js/target/scala-2.13/riffjs-fastopt/main.js"></script>
+    <!--
+    http://jsfiddle.net/vjNpj/2060/
+    -->
+    <style>
+body
+{
+ margin: 0px;
+ padding: 0px;
+}
+
+.content
+{
+ margin: 10px;
+ padding: 10px;
+}
+
+dl
+{
+ vertical-align:top;
+ padding-top:10px;
+ display: inline-block;
+ width: 1000px;
+ background: #fff;
+ border: 1px solid #000;
+ margin: 10px;
+ padding: 5px 15px;
+ overflow: auto;
+}
+
+dt {
+ font-weight: bold;
+ width: 40px;
+ display: inline-block;
+ padding-left:10px;
+}
+dd {
+  display: inline-block;
+  border-right:2px solid red;
+  padding-right:20px;
+}
+#progressbar {
+  text-align:center;
+  background-color: black;
+  border-radius: 13px; /* (height of inner div) / 2 + padding */
+  padding: 3px;
+}
+
+#progressbar > div {
+   background-color: orange;
+   width: 60%; /* Adjust with JavaScript */
+   height: 20px;
+   border-radius: 10px;
+}
+
+
+    </style>
 </head>
 <body onload="IndexPage('target')">
 
-    <div id="target"></div>
-    <div style="display: inline; float: right; padding:20px"><canvas id="canvas" style="display: block" width="100" height="100"/></div>
-    <div><span id="role"></span>:<span id="nodeid"></span></div>
-    <div>Cluster:&nbsp;&nbsp;<span id="clusterId"></span></div>
-    <div>Term:<span id="term"></span></div>
-    <div>Current Leader:<span id="leader"></span></div>
-    <div>Log:<span id="log"></span></div>
-    <div>
-        <div>Append:</div>
-        <textarea id="appendText" rows="4" cols="80"></textarea>
-    </div>
-    <div id="buttons"></div>
-    <!-- shows the disk table -->
-    <div id="disk"></div>
-    <div id="messages"></div>
+<div id="target"></div>
+
 </body>
 </html>

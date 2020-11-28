@@ -7,7 +7,7 @@ import riff.js.ui.JSRuntime.implicits.asRichZIO
 import riff.js.{BroadcastChannel, JSDisk, RiffJS}
 import riff.json.RiffCodec.{Broadcast, DirectMessage}
 import scalatags.JsDom.all._
-import zio.duration.durationInt
+import zio.duration.{Duration, durationInt}
 import zio.{Task, UIO, ZIO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,21 +27,23 @@ case class IndexPage(targetDivId: String) {
   }
 
   val header = Header(nodeName)
-  val appendTextTextArea = textarea().render // TextArea
+  val appendTextTextArea = textarea(cols := 100, rows := 20).render // TextArea
+  val appendDataDiv = div(
+    h2("Data to append:"),
+    appendTextTextArea).render
   val buttonRowDiv = div().render
   val diskDiv = div().render
   val messagesDiv = div().render
 
   targetDiv.innerHTML = ""
-  targetDiv.appendChild(div()(
+  targetDiv.appendChild(div(
     header.banner,
-    div(
-      h2("Data to append:"),
-      appendTextTextArea),
-    buttonRowDiv,
-    diskDiv,
-    messagesDiv
-  ).render)
+    div(`class` := "content")(
+      appendDataDiv,
+      buttonRowDiv,
+      diskDiv,
+      messagesDiv
+    )).render)
 
   val heartbeatFreq = UIO(Random.nextLong(8000) + 2000)
   val heartbeatTimer = Timer(header.canvasElm, heartbeatFreq).value()
@@ -53,7 +55,8 @@ case class IndexPage(targetDivId: String) {
   val logger = {
     val roleChange = Logging.withRoleChange {
       case (_, to) =>
-        header.updateRole(to.role.name)
+        header.updateRole(to.role)
+        appendDataDiv.style.display = if (to.role.isLeader) "block" else "none"
         refresh.delay(100.millis).future()
     }
     val requestResponse = Logging.withUpdate {
@@ -71,14 +74,18 @@ case class IndexPage(targetDivId: String) {
   val disk = JSDisk(cluster.ourNodeId)
   var raftJS: Option[Raft] = None
 
+  val followerRange: TimeRange = TimeRange(10.seconds, 15.seconds)
+  val leaderHBFreq: Duration = 5.seconds
   val init = for {
-    riffJS <- RiffJS(disk, cluster, logger, heartbeatTimer.heartbeatService())
+    riffJS <- RiffJS(disk, cluster, logger, heartbeatTimer.heartbeatService(followerRange, leaderHBFreq))
     _ <- riffJS.scheduleFollowerHB
   } yield riffJS
   init.future().onComplete {
     case Success(raft: Raft) =>
       raftJS = Some(raft)
-      header.updateRole(raft.currentRole().value().name)
+      val role = raft.currentRole().value()
+      header.updateRole(role)
+      appendDataDiv.style.display = if (role.isLeader) "block" else "none"
       val tick = for {
         _ <- heartbeatTimer.update()
         updated <- raft.applyNextInput
@@ -124,11 +131,11 @@ case class IndexPage(targetDivId: String) {
     onAppend().future()
   }
 
-  val pauseButton = button(style := buttonStyle)("⏸").render
+  val pauseButton = button(style := "margin:8px; padding:5px")("⏸ Pause").render
   pauseButton.onclick = e => {
     e.preventDefault()
     cluster.togglePause()
-    pauseButton.innerText = if (cluster.isPaused()) "▶️" else "⏸"
+    pauseButton.innerText = if (cluster.isPaused()) "▶️ Resume" else "⏸ Pause"
   }
 
   val triggerVoteButton = button(style := buttonStyle)("Trigger Vote").render
@@ -146,15 +153,12 @@ case class IndexPage(targetDivId: String) {
   val mainButtons = div(
     appendButton,
     triggerVoteButton,
+    addNodeButton,
     pauseButton
   )
-  val secondaryButtons = div(
-    addNodeButton
-  )
   buttonRowDiv.appendChild(mainButtons.render)
-  buttonRowDiv.appendChild(secondaryButtons.render)
 
-  val table = DiskTable(disk) {
+  val diskTable = DiskTable(disk) {
     update()
   }
 
@@ -163,16 +167,15 @@ case class IndexPage(targetDivId: String) {
       val peers: Set[NodeId] = cluster.currentPeers
       header.updateFromState(state, peers: Set[NodeId])
     }).either
-    _ <- table.update
+    _ <- diskTable.update
     _ = messagesTable.update()
   } yield ()
 
   def update(): Future[Unit] = refresh.future()
 
   diskDiv.innerHTML = ""
-  diskDiv.appendChild(table.render)
+  diskDiv.appendChild(diskTable.render)
 
   // do an initial refresh
   update()
-
 }

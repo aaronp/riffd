@@ -147,7 +147,7 @@ class MessagesTable {
     }
     tableDiv.innerHTML = ""
     tableDiv.appendChild(div(
-      h4("Messages"),
+      h2("Messages"),
       div(generateTest),
       table(trs: _*).render,
     ).render)
