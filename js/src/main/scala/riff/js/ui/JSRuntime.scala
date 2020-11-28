@@ -6,10 +6,8 @@ import zio.duration.{Duration, durationInt}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object Main extends App {
-
+object JSRuntime extends App {
   def evalTimeout: Duration = 5.seconds
-
   object implicits {
     implicit def asRichZIO[A](job: ZIO[_root_.zio.ZEnv, Any, A]) = new {
       def value() = unsafeRun(job.either).getOrElse(sys.error("oops"))
@@ -20,6 +18,5 @@ object Main extends App {
       }
     }
   }
-
-  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = putStrLn("Hello World").exitCode
+  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = ZIO.unit.exitCode
 }

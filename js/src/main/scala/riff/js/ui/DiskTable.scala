@@ -1,14 +1,14 @@
 package riff.js.ui
 
 import org.scalajs.dom.raw.Element
+import riff.js.ui.JSRuntime.implicits._
 import riff.{Disk, DiskError, Offset, Record}
 import scalatags.JsDom.all._
-import Main.implicits._
 import zio.ZIO
 
 import scala.util.Try
 
-case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
+case class DiskTable(disk: Disk.Service)(onRefresh: => Unit) {
 
   private object Paging {
     val offset = input(`type` := "text", value := "").render
@@ -54,6 +54,7 @@ case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
     update.future()
   }
 
+  val logDiv = h2("Log").render
   val update: ZIO[Any, DiskError, Unit] = {
     for {
       uncommitted <- disk.latestUncommitted()
@@ -67,13 +68,14 @@ case class DiskTable(disk: Disk.Service, log: Element)(onRefresh: => Unit) {
     } yield {
       tableDiv.innerHTML = ""
       tableDiv.appendChild(table((headerRow +: rows): _*).render)
-      log.innerHTML = ""
-      log.innerText = s"${committed.offset} / ${uncommitted.offset}"
+      logDiv.innerHTML = ""
+      logDiv.innerText = s"Log: ${committed.offset} / ${uncommitted.offset}"
     }
   }
 
   val tableDiv = div().render
-  val render = span(
+  val render = div(
+    logDiv,
     tableDiv,
     div(Paging.render),
   ).render

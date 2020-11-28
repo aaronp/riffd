@@ -1,24 +1,21 @@
 package riff.js.ui
 
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 import org.scalajs.dom.html.Canvas
-import org.scalajs.dom.{CanvasRenderingContext2D, document, window}
+import org.scalajs.dom.{CanvasRenderingContext2D, window}
 import riff._
-import riff.js.ui.Main.implicits.asRichZIO
+import riff.js.ui.JSRuntime.implicits.asRichZIO
 import riff.js.ui.Timer.{FollowerState, LeaderState, State}
 import zio._
 import zio.clock._
 import zio.console.Console
 import zio.duration.{Duration, durationInt}
 
-import scala.util.Random
-
 case class Timer(canvas: Canvas,
                  nextTimeout: Ref[Timer.Range],
                  nextExpiryMs: UIO[Long],
-                 radius: Int = 30,
+                 radius: Int,
                  color: Double => String,
                  width: Double => Int
                 ) {
@@ -165,7 +162,7 @@ object Timer {
       } else "#00FF00"
     }
 
-    val radius = 20
+    val radius = 40
 
     def width(pcnt: Double) = {
       val d = 1 + (pcnt * 10)

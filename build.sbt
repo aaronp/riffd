@@ -1,10 +1,10 @@
-val dottyVersion = "0.27.0-RC1"
-val scala213Version = "2.13.3"
+val dottyVersion = "3.0.0-M2"
+val scala213Version = "2.13.4"
 
 ThisBuild / scalaVersion := scala213Version
 val zioVersion = "1.0.3"
 
-val Http4sVersion = "0.21.7"
+val Http4sVersion = "0.21.13"
 
 val circeVersion = "0.13.0"
 

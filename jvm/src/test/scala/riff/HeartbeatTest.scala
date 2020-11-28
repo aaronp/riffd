@@ -2,7 +2,6 @@ package riff
 
 import riff.Input.HeartbeatTimeout
 import zio._
-import zio.console.putStrLn
 import zio.duration._
 
 class HeartbeatTest extends BaseTest {

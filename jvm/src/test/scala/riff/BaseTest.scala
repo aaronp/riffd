@@ -16,7 +16,7 @@ abstract class BaseTest extends AnyWordSpec with Matchers with GivenWhenThen wit
 
   implicit val rt: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
-  def testTimeout: Duration = 15.seconds
+  def testTimeout: Duration = 3.seconds
 
   def shortTimeoutJava = 200.millis
 

@@ -9,19 +9,24 @@ object TestGen {
     if (deltas.isEmpty) {
       " // no messages specified"
     } else {
-      val beforeState = Snapshot(deltas.head.from).asJson.spaces2
-      val expectedState = Snapshot(deltas.last.to).asJson.spaces2
-      val msgs = deltas.map(d => InputCodec(d.input).noSpaces)
+      val beforeState = Snapshot(deltas.head.from)
+      val expectedState = Snapshot(deltas.last.to)
       val tripleQuotes = "\"\"\""
+      val msgs = deltas.map{d =>
+        s"""
+          |$tripleQuotes${InputCodec(d.input).noSpaces}$tripleQuotes""".stripMargin
+      }
       s"""
-         |val before = $tripleQuotes${beforeState.asJson.noSpaces}$tripleQuotes
+         |"update the internal state" in {
          |
-         |val expected = $tripleQuotes${expectedState.asJson.spaces2}$tripleQuotes
+         |  val before = $tripleQuotes${beforeState.asJson.noSpaces}$tripleQuotes
          |
-         |val messages = ${msgs.mkString(s"List(\n\t$tripleQuotes", s"$tripleQuotes,\n\t$tripleQuotes", "$tripleQuotes)\n")}
+         |  val expected = $tripleQuotes${expectedState.asJson.spaces2}$tripleQuotes
          |
-         |verify(before, expected, messages)
+         |  val messages = ${msgs.mkString(s"List(", ",", ")")}
          |
+         |  verify(before, expected, messages)
+         |}
          |""".stripMargin
     }
   }
