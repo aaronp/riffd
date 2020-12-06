@@ -2,6 +2,7 @@ val dottyVersion = "3.0.0-M2"
 val scala213Version = "2.13.4"
 
 ThisBuild / scalaVersion := scala213Version
+
 val zioVersion = "1.0.3"
 val Http4sVersion = "0.21.13"
 val circeVersion = "0.13.0"
@@ -41,6 +42,14 @@ lazy val riff = crossProject(JSPlatform, JVMPlatform)
 
 lazy val riffJVM = riff.jvm
 lazy val riffJS = riff.js
+
+
+
+lazy val docs = project
+  .in(file("./docs"))
+  .dependsOn(riffJVM)
+  .enablePlugins(GitBookPlugin)
+
 
 lazy val rest = project
   .in(file("./rest"))
