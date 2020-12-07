@@ -23,3 +23,8 @@ docker run --rm -v "$PWD:/gitbook" -p 4000:4000 billryan/gitbook gitbook serve
 ```
 
 and FYI, ```alias gitbook='docker run --rm -v "$PWD":/gitbook -p 4000:4000 billryan/gitbook gitbook'```
+
+This is the manual script to do it:
+```
+http://sangsoonam.github.io/2016/08/02/publish-gitbook-to-your-github-pages.html
+```
