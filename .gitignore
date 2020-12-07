@@ -9,3 +9,4 @@ target
 .vscode
 out
 shared-src
+src/gitbook/_book

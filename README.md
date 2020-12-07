@@ -1,18 +1,25 @@
----
-description: A demo implementation of the Raft protocol
----
+# Building
 
-# Riff Raft
+# Docs
 
-This is a project I've been meaning to write for a long time.
+I've used gitbook to generate the site, which can be configured as per:
+```
+https://github.com/GitbookIO/gitbook/blob/master/docs/config.md
+```
 
-It's the culmination of several lines of thought: primarily, 
+To build/serve/test gitbook locally, I use 
+```
+https://github.com/billryan/docker-gitbook
+```
 
-[my views on testing](i-hate-tdd.md)
+Or online [here](https://app.gitbook.com/@aaron-pritzlaff/s/riff/@drafts)
 
-desire for immediate feedback
+(or e.g. )
 
-interest in applying functional programming to real-world problems
+e.g.:
+```
+cd src/git
+docker run --rm -v "$PWD:/gitbook" -p 4000:4000 billryan/gitbook gitbook serve
+```
 
-interest in distributing computing/consensus algorithms
-
+and FYI, ```alias gitbook='docker run --rm -v "$PWD":/gitbook -p 4000:4000 billryan/gitbook gitbook'```

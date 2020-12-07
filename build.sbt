@@ -6,6 +6,28 @@ val zioVersion = "1.0.3"
 val Http4sVersion = "0.21.13"
 val circeVersion = "0.13.0"
 
+enablePlugins(GhpagesPlugin)
+
+/**
+ * This doesn't work locally:
+ * {{{
+ *   sbt:riff> previewSite
+ *   [info] SitePreviewPlugin server started on port 4000. Press any key to exit.
+ *   [error] /usr/local/lib/node_modules/gitbook-cli/node_modules/npm/node_modules/graceful-fs/polyfills.js:287
+ *   [error]       if (cb) cb.apply(this, arguments)
+ *   [error]                  ^
+ *   [error] TypeError: cb.apply is not a function
+ *   [error]     at /usr/local/lib/node_modules/gitbook-cli/node_modules/npm/node_modules/graceful-fs/polyfills.js:287:18
+ *   [error]     at FSReqCallback.oncomplete (fs.js:177:5)
+ * }}}
+ */
+// enablePlugins(GitBookPlugin)
+
+enablePlugins(SiteScaladocPlugin)
+
+ghpagesNoJekyll := true
+
+git.remoteRepo := "git@github.com:{your username}/{your project}.git"
 lazy val riff = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
   .settings(
@@ -28,7 +50,8 @@ lazy val riff = crossProject(JSPlatform, JVMPlatform)
     ).map(_.withDottyCompat(scalaVersion.value)))
   .jvmSettings(
     name := "riffJVM",
-    libraryDependencies += ("org.scalatest" %% "scalatest" % "3.2.3" % "test").withDottyCompat(scalaVersion.value)
+    libraryDependencies += ("org.scalatest" %% "scalatest" % "3.2.3" % "test").withDottyCompat(scalaVersion.value),
+    git.remoteRepo := "git@github.com:aaronp/riffd.git"
   )
   .jsSettings(
     name := "riffJS",
