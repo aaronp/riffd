@@ -10,6 +10,7 @@ git pull origin gh-pages --rebase
 
 # copy the static site files into the current directory.
 cp -R src/gitbook/_book/* .
+mv src/gitbook/demo .
 
 # remove 'node_modules' and '_book' directory
 git clean -fx node_modules
