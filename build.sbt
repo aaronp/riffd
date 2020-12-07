@@ -6,8 +6,6 @@ val zioVersion = "1.0.3"
 val Http4sVersion = "0.21.13"
 val circeVersion = "0.13.0"
 
-enablePlugins(GhpagesPlugin)
-
 /**
  * This doesn't work locally:
  * {{{
@@ -73,7 +71,16 @@ lazy val rest = project
       "io.circe" %% "circe-generic-extras" % circeVersion,
       "io.circe" %% "circe-parser" % circeVersion).map(_.withDottyCompat(scalaVersion.value)),
     libraryDependencies ++= List(
+      "com.typesafe" % "config" % "1.4.0",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.9.2",
+      "ch.qos.logback" % "logback-classic" % "1.2.3",
+      "dev.zio" %% "zio-interop-cats" % "2.2.0.1",
+      "com.github.aaronp" %% "args4c" % "0.7.0",
+      "com.github.aaronp" %% "eie" % "1.0.0",
+      "org.http4s" %% "http4s-blaze-server" % Http4sVersion,
+      "org.http4s" %% "http4s-blaze-client" % Http4sVersion,
       "org.http4s" %% "http4s-circe" % Http4sVersion,
       "org.http4s" %% "http4s-core" % Http4sVersion,
+      "org.http4s" %% "http4s-dsl" % Http4sVersion,
     ).map(_.withDottyCompat(scalaVersion.value))
   )

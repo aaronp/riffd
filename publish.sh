@@ -3,7 +3,7 @@
 source ./makeDoc.sh
 
 rm -rf api
-sbt doc 
+sbt "project riffJS" fullOptJS doc
 
 # checkout to the gh-pages branch
 git checkout gh-pages
@@ -15,7 +15,7 @@ git pull origin gh-pages --rebase
 cp -R src/gitbook/_book/* .
 #mv src/gitbook/demo .
 mkdir api
-cp -R ./jvm/target/scala-2.13/api* api/
+cp -R ./js/target/scala-2.13/api* api/
 
 # remove 'node_modules' and '_book' directory
 git clean -fx node_modules
