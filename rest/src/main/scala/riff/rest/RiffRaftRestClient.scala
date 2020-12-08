@@ -8,7 +8,7 @@ case class RiffRaftRestClient() {
 
   def send(response: Response) = ???
 
-  def send(either: Either[Request, Response]) = either match {
+  def send(either: Either[Request, Response]): Nothing = either match {
     case Left(request) => send(request)
     case Right(response) => send(response)
   }
