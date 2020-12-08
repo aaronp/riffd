@@ -411,7 +411,7 @@ final case class NioDisk(block: Blocking.Service, baseDir: Path, offsetBatchSize
 }
 
 object NioDisk {
-  def apply(baseDir: Path, offsetBatchSize: Int = 100, block: Blocking.Service = Blocking.Service.live) = {
+  def apply(baseDir: Path, offsetBatchSize: Int = 100, block: Blocking.Service = Blocking.Service.live): NioDisk = {
     require(Files.exists(baseDir) || Files.exists(Files.createDirectories(baseDir)), s"Couldn't create $baseDir")
     new NioDisk(block, baseDir, offsetBatchSize)
   }

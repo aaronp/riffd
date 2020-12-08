@@ -67,7 +67,7 @@ lazy val riffJS = riff.js
 
 lazy val rest = project
   .in(file("./rest"))
-  .dependsOn(riffJVM)
+  .dependsOn(riffJVM % "compile->compile;test->test")
   .settings(
     libraryDependencies ++= List("io.circe" %% "circe-generic" % circeVersion,
       "io.circe" %% "circe-generic-extras" % circeVersion,

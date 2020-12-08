@@ -1,6 +1,7 @@
 package riff.rest
 
 import cats.effect._
+import com.typesafe.config.Config
 import io.circe.Json
 import io.circe.syntax._
 import org.http4s.Uri
@@ -11,7 +12,7 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.io.POST
 import org.http4s.implicits.http4sLiteralsSyntax
 import riff.json.RiffCodec._
-import riff.{RiffRequest, RiffResponse}
+import riff.{NodeId, RiffRequest, RiffResponse}
 import zio.Task
 import zio.interop.catz._
 
@@ -22,13 +23,12 @@ import scala.concurrent.ExecutionContext.global
  * see https://http4s.org/v0.20/client/
  */
 trait RiffRaftRestClient {
-  def send(destination: Uri, either: Either[RiffRequest, RiffResponse]): Task[Boolean]
+  def send(either: Either[RiffRequest, RiffResponse]): Task[Boolean]
 }
 
 object RiffRaftRestClient {
-  val default = uri"http://localhost:8080/hello/"
 
-  case class Instance(httpClient: Client[Task]) extends Http4sClientDsl[Task] with RiffRaftRestClient {
+  case class Instance(hostPort: String, ourNodeId: NodeId, httpClient: Client[Task]) extends Http4sClientDsl[Task] with RiffRaftRestClient {
     private def post(destination: Uri, jason: Json): Task[Boolean] = httpClient.expect(POST(jason, destination))(jsonOf[Task, Boolean])
 
     def send(destination: Uri, request: RiffRequest): Task[Boolean] = post(destination, request.asJson)
@@ -39,14 +39,28 @@ object RiffRaftRestClient {
       case Left(request) => send(destination, request)
       case Right(response) => send(destination, response)
     }
+
+    override def send(either: Either[RiffRequest, RiffResponse]): Task[Boolean] = {
+      val uriString = s"${hostPort}/riff/${ourNodeId}"
+//      send(uri"$uriString", either)
+      ???
+    }
   }
 
+  def apply(rootConfig : Config) = {
+    val cluster = rootConfig.getConfig("riff.cluster")
+    import args4c.implicits._
+    cluster.entries().map {
+      case (name, cfg) =>
+        val nested =  cfg.atKey(name)
+        nested.getString("hostPort")
+    }
+  }
 
-  def apply(destination: Uri, request: RiffRequest, ec: ExecutionContext = global)(implicit ce: ConcurrentEffect[Task]) = {
-    //    implicit val cs: ContextShift[Task] = IO.contextShift(ec)
-    //    implicit val timer: Timer[Task] = IO.timer(ec)
+  def apply(hostPort: String, ourNodeId: NodeId, request: RiffRequest, ec: ExecutionContext = global)(implicit ce: ConcurrentEffect[Task]) = {
+    //      val destination = http://localhost:8080
     BlazeClientBuilder[Task](ec).resource.use { client: Client[Task] =>
-      Instance(client).send(destination, request)
+      Instance(hostPort, ourNodeId, client).send(Left(request))
     }
   }
 }
