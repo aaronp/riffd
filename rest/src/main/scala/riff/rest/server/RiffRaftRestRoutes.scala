@@ -43,7 +43,6 @@ object RiffRaftRestRoutes {
   def apply(handler: UserInput => UIO[Resp]) = {
     HttpRoutes.of[Task] {
       case req@POST -> Root / "riff" / from =>
-        println("handling..........")
         val userInput: ZIO[Any, Throwable, UserInput] = req.as[RiffRequest].map(r => UserInput(from, r)).orElse(
           req.as[RiffResponse].map(r => UserInput(from, r))
         )
