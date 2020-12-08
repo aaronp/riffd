@@ -25,6 +25,8 @@ enablePlugins(SiteScaladocPlugin)
 
 ghpagesNoJekyll := true
 
+val ScalaTest = "org.scalatest" %% "scalatest" % "3.2.3" % "test"
+
 git.remoteRepo := "git@github.com:{your username}/{your project}.git"
 lazy val riff = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
@@ -48,7 +50,7 @@ lazy val riff = crossProject(JSPlatform, JVMPlatform)
     ).map(_.withDottyCompat(scalaVersion.value)))
   .jvmSettings(
     name := "riffJVM",
-    libraryDependencies += ("org.scalatest" %% "scalatest" % "3.2.3" % "test").withDottyCompat(scalaVersion.value),
+    libraryDependencies += (ScalaTest).withDottyCompat(scalaVersion.value),
     git.remoteRepo := "git@github.com:aaronp/riffd.git"
   )
   .jsSettings(
@@ -82,5 +84,7 @@ lazy val rest = project
       "org.http4s" %% "http4s-circe" % Http4sVersion,
       "org.http4s" %% "http4s-core" % Http4sVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
+      "org.http4s" %% "http4s-prometheus-metrics" % Http4sVersion,
+      ScalaTest
     ).map(_.withDottyCompat(scalaVersion.value))
   )

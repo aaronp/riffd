@@ -12,10 +12,7 @@ import scala.util.{Failure, Success}
  * @param initialPeers
  * @param ourNodeId
  */
-final class ClusterLocal(initialPeers: Set[NodeId],
-                         val ourNodeId: String,
-                         postMessage: AddressedMessage => Task[Unit]
-                        ) extends Cluster.Service {
+final class ClusterLocal(initialPeers: Set[NodeId], val ourNodeId: String, postMessage: AddressedMessage => Task[Unit]) extends Cluster.Service {
   private var peersSet = initialPeers
 
   def currentPeers: Set[NodeId] = peersSet
@@ -70,16 +67,15 @@ final class ClusterLocal(initialPeers: Set[NodeId],
     }
   }
 
-  override def broadcast(message: Request): IO[ClusterError, Unit] = {
+  override def broadcast(message: RiffRequest): IO[ClusterError, Unit] = {
     send(Broadcast(ourNodeId, message))
   }
 
-  override def reply(to: NodeId, message: Either[Request, Response]): IO[ClusterError, Unit] = {
+  override def reply(to: NodeId, message: Either[RiffRequest, RiffResponse]): IO[ClusterError, Unit] = {
     send(DirectMessage(ourNodeId, to, message))
   }
 
   private def send(message: AddressedMessage) = {
-    println(s"💬 POST $message")
     postMessage(message).refineOrDie {
       case NonFatal(e) =>
         val msg = message match {
@@ -92,7 +88,7 @@ final class ClusterLocal(initialPeers: Set[NodeId],
 }
 
 object ClusterLocal {
-  def apply(nodeId: NodeId, name: String = "riff")(
+  def apply(nodeId: NodeId)(
     postMessage: AddressedMessage => Task[Unit]
   ): ClusterLocal = new ClusterLocal(Set.empty[NodeId], nodeId, postMessage)
 

@@ -7,8 +7,8 @@ import io.circe.Decoder.Result
 import io.circe._
 import io.circe.syntax._
 import riff.Input.{Append, HeartbeatTimeout, UserInput}
-import riff.Request.{AppendEntries, RequestVote}
-import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import riff.RiffRequest.{AppendEntries, RequestVote}
+import riff.RiffResponse.{AppendEntriesResponse, RequestVoteResponse}
 import riff.Role.{Candidate, Follower, Leader}
 import riff._
 import zio.Schedule
@@ -52,8 +52,8 @@ object RiffCodec {
     } yield LogCoords(term, offset)
   }
 
-  implicit object RequestCodec extends Codec[Request] {
-    override def apply(value: Request): Json = value match {
+  implicit object RequestCodec extends Codec[RiffRequest] {
+    override def apply(value: RiffRequest): Json = value match {
       case AppendEntries(term, leaderId, previous, leaderCommit, entries) =>
         Json.obj(
           "term" -> term.asJson,
@@ -71,7 +71,7 @@ object RiffCodec {
     }
 
 
-    override def apply(c: HCursor): Result[Request] = {
+    override def apply(c: HCursor): Result[RiffRequest] = {
       asAppendEntries(c).orElse(asRequestVote(c))
     }
 
@@ -94,8 +94,8 @@ object RiffCodec {
     }
   }
 
-  implicit object ResponseCodec extends Codec[Response] {
-    override def apply(value: Response): Json = value match {
+  implicit object ResponseCodec extends Codec[RiffResponse] {
+    override def apply(value: RiffResponse): Json = value match {
       case AppendEntriesResponse(term, success, matchIndex) => Json.obj(
         "term" -> term.asJson,
         "success" -> success.asJson,
@@ -107,7 +107,7 @@ object RiffCodec {
       )
     }
 
-    override def apply(c: HCursor): Result[Response] = {
+    override def apply(c: HCursor): Result[RiffResponse] = {
       asAppendDataResponse(c).orElse(asRequestVoteResponse(c))
     }
 
@@ -146,14 +146,14 @@ object RiffCodec {
     def fromRequest(c: HCursor): Result[UserInput] = {
       for {
         fromNode <- c.downField("fromNode").as[String]
-        request <- c.downField("request").as[Request]
+        request <- c.downField("request").as[RiffRequest]
       } yield UserInput(fromNode, Left(request))
     }
 
     def fromResponse(c: HCursor): Result[UserInput] = {
       for {
         fromNode <- c.downField("fromNode").as[String]
-        response <- c.downField("response").as[Response]
+        response <- c.downField("response").as[RiffResponse]
       } yield UserInput(fromNode, Right(response))
     }
   }
@@ -179,13 +179,13 @@ object RiffCodec {
     }
   }
 
-  case class Broadcast(from: NodeId, message: Request) extends AddressedMessage
+  case class Broadcast(from: NodeId, message: RiffRequest) extends AddressedMessage
 
   object Broadcast {
     implicit val codec = io.circe.generic.semiauto.deriveCodec[Broadcast]
   }
 
-  case class DirectMessage(from: NodeId, to: NodeId, message: Either[Request, Response]) extends AddressedMessage {
+  case class DirectMessage(from: NodeId, to: NodeId, message: Either[RiffRequest, RiffResponse]) extends AddressedMessage {
     def asUserInput = UserInput(from, message)
   }
 
@@ -215,7 +215,7 @@ object RiffCodec {
         for {
           from <- c.downField("from").as[String]
           to <- c.downField("to").as[String]
-          message <- c.downField("request").as[Request]
+          message <- c.downField("request").as[RiffRequest]
         } yield DirectMessage(from, to, Left(message))
       }
 
@@ -223,7 +223,7 @@ object RiffCodec {
         for {
           from <- c.downField("from").as[String]
           to <- c.downField("to").as[String]
-          message <- c.downField("response").as[Response]
+          message <- c.downField("response").as[RiffResponse]
         } yield DirectMessage(from, to, Right(message))
       }
     }

@@ -1,8 +1,8 @@
 package riff.js.ui
 
 import org.scalajs.dom.document
-import riff.Request.{AppendEntries, RequestVote}
-import riff.Response.{AppendEntriesResponse, RequestVoteResponse}
+import riff.RiffRequest.{AppendEntries, RequestVote}
+import riff.RiffResponse.{AppendEntriesResponse, RequestVoteResponse}
 import riff.js.Dialog
 import riff.{Input, RaftNodeState}
 import scalatags.JsDom.all._

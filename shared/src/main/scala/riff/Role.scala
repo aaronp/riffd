@@ -27,7 +27,7 @@ object Role {
 
     def canBecomeLeader = isMajority(votesFor.size, clusterSize)
 
-    def update(term: Term, from: NodeId, reply: Response.RequestVoteResponse): Candidate = {
+    def update(term: Term, from: NodeId, reply: RiffResponse.RequestVoteResponse): Candidate = {
       if (reply.term == term) {
         if (reply.granted) {
           copy(votesFor = votesFor + from, peers = peers + from)
@@ -57,7 +57,7 @@ object Role {
           case (_, peer) =>
             for {
               previous <- Disk.termFor(peer.matchIndex).orDie
-              heartbeat = Request.AppendEntries.heartbeat(
+              heartbeat = RiffRequest.AppendEntries.heartbeat(
                 term,
                 ourNodeId,
                 previous,

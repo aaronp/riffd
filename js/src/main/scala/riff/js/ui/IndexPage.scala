@@ -98,7 +98,7 @@ case class IndexPage(targetDivId: String) {
       // we'll just hack it manually for now
       window.setInterval(() => tick.future(), 100)
 
-      def handleMsg(from: String, reqOrResp: Either[Request, Response]) = {
+      def handleMsg(from: String, reqOrResp: Either[RiffRequest, RiffResponse]) = {
         raft.input(from)(reqOrResp).future()
       }
 
