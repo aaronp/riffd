@@ -1,19 +1,25 @@
-package riff.rest
+package riff.rest.server
 
+import zio._
 import io.circe.Json
-import io.circe.syntax._
 import org.http4s
 import org.http4s.HttpRoutes
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.circe._
+import org.http4s._
+import org.http4s.dsl._
 import riff.Input.UserInput
-import riff.json.RiffCodec._
+import riff.rest.taskDsl
 import riff.{FullEnv, Raft, Request, Response}
 import zio.interop.catz._
 import zio.{Task, UIO, ZEnv, ZIO}
+import _root_.io.circe.syntax._
 
 import scala.util.control.NonFatal
 
-object RiffRoutes {
+/**
+ * You've got to have a little fun.
+ */
+object RiffRaftRestRoutes {
 
   type Resp = http4s.Response[Task]
 
