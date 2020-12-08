@@ -13,11 +13,11 @@ import scala.math.Ordering.Implicits.infixOrderingOps
  * @param term                 our current term
  * @param commitIndex          the cached last applied commit index
  * @param lastApplied          the cached last applied log index
- * @param maxSendBatchSize     how many [[riff.Request.AppendEntries]] records should we send at a time?
+ * @param maxSendBatchSize     how many [[riff.RiffRequest.AppendEntries]] records should we send at a time?
  * @param role                 our current [[Role]]
  * @param clusterRetrySchedule a schedule used to for retrying failed [[Cluster]] sends (TODO: remove this and just incorporate in the passed-in [[Cluster]])
  * @param currentLeaderId      the known leader in this term
- * @param minClusterSize          this was added to prevent cluster nodes from electing themselves before peers are up -- e.g. to prevent single-node clusters
+ * @param minClusterSize       this was added to prevent cluster nodes from electing themselves before peers are up -- e.g. to prevent single-node clusters
  */
 final case class RaftNodeState(ourNodeId: NodeId,
                                term: Term,
@@ -33,14 +33,14 @@ final case class RaftNodeState(ourNodeId: NodeId,
     input match {
       case Input.Append(data) => appendData(data)
       case Input.HeartbeatTimeout(peerOpt) => onHeartbeatTimeout(peerOpt)
-      case Input.UserInput(from, Left(request: Request.RequestVote)) => onRequestVote(from, request)
-      case Input.UserInput(from, Left(request: Request.AppendEntries)) => onAppendEntries(from, request)
-      case Input.UserInput(from, Right(response: Response.RequestVoteResponse)) => onRequestVoteResponse(from, response)
-      case Input.UserInput(from, Right(response: Response.AppendEntriesResponse)) => onAppendEntriesResponse(from, response)
+      case Input.UserInput(from, Left(request: RiffRequest.RequestVote)) => onRequestVote(from, request)
+      case Input.UserInput(from, Left(request: RiffRequest.AppendEntries)) => onAppendEntries(from, request)
+      case Input.UserInput(from, Right(response: RiffResponse.RequestVoteResponse)) => onRequestVoteResponse(from, response)
+      case Input.UserInput(from, Right(response: RiffResponse.AppendEntriesResponse)) => onAppendEntriesResponse(from, response)
     }
   }
 
-  def onAppendEntries(from: NodeId, request: Request.AppendEntries): ZIO[FullEnv, Nothing, RaftNodeState] = {
+  def onAppendEntries(from: NodeId, request: RiffRequest.AppendEntries): ZIO[FullEnv, Nothing, RaftNodeState] = {
     if (request.term > term) {
       for {
         follower <- becomeFollower(request.term, Some(request.leaderId))
@@ -49,7 +49,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
     } else {
       role match {
         case Leader(_) =>
-          val response = Response.AppendEntriesResponse(term, false, commitIndex)
+          val response = RiffResponse.AppendEntriesResponse(term, false, commitIndex)
           Cluster.sendResponse(from, response).retry(clusterRetrySchedule).orDie.as(this)
         case Candidate(_, _, _) =>
           for {
@@ -61,7 +61,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
     }
   }
 
-  def onAppendEntriesResponse(from: NodeId, response: Response.AppendEntriesResponse) = {
+  def onAppendEntriesResponse(from: NodeId, response: RiffResponse.AppendEntriesResponse) = {
     role match {
       case leader@Role.Leader(_) => onAppendEntriesResponseWhenLeader(from, response, leader)
       case _ => noop
@@ -76,8 +76,8 @@ final case class RaftNodeState(ourNodeId: NodeId,
    * @param leader
    * @return
    */
-  private def onAppendEntriesResponseWhenLeader(from: NodeId, response: Response.AppendEntriesResponse, leader: Leader) = {
-    val Response.AppendEntriesResponse(_, success, matchIndex) = response
+  private def onAppendEntriesResponseWhenLeader(from: NodeId, response: RiffResponse.AppendEntriesResponse, leader: Leader) = {
+    val RiffResponse.AppendEntriesResponse(_, success, matchIndex) = response
     leader.update(from, success, matchIndex).flatMap {
       case (updatedLeaderState, peer: ClusterPeer) =>
         val previousCommit = commitIndex
@@ -105,7 +105,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
   }
 
   private def sendDataToNode(toNode: NodeId,
-                             response: Response.AppendEntriesResponse,
+                             response: RiffResponse.AppendEntriesResponse,
                              fromOffset: Offset,
                              batchSize: Int) = {
     for {
@@ -114,7 +114,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
       _ <- all match {
         case read if read.isEmpty => noop
         case entries =>
-          val message = Request.AppendEntries(term, ourNodeId, previous, commitIndex, entries.map(_.entry))
+          val message = RiffRequest.AppendEntries(term, ourNodeId, previous, commitIndex, entries.map(_.entry))
           Cluster.sendRequest(toNode, message).retry(clusterRetrySchedule).orDie.as(this)
       }
       _ <- Heartbeat.scheduleHeartbeat(toNode)
@@ -128,7 +128,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
         for {
           previous <- Disk.termFor(lastApplied).orDie
           updated <- Disk.append(term, index, data).orDie.as(copy(lastApplied = index))
-          request = Request.AppendEntries(updated.term, ourNodeId, previous, commitIndex, Array(LogEntry(updated.term, data)))
+          request = RiffRequest.AppendEntries(updated.term, ourNodeId, previous, commitIndex, Array(LogEntry(updated.term, data)))
           _ <- ZIO.foreachPar(leader.peersMatching(lastApplied)) { peer =>
             Cluster.sendRequest(peer, request).retry(clusterRetrySchedule).orDie
           }
@@ -156,7 +156,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
       case Some((newRole, newPeer)) =>
         for {
           previous <- Disk.termFor(newPeer.matchIndex).orDie
-          hbRequest = Request.AppendEntries.heartbeat(term, ourNodeId, previous, commitIndex)
+          hbRequest = RiffRequest.AppendEntries.heartbeat(term, ourNodeId, previous, commitIndex)
           _ <- Cluster.sendRequest(peerId, hbRequest).retry(clusterRetrySchedule).orDie.as(newRole)
         } yield copy(role = newRole)
     }
@@ -164,7 +164,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
 
   private val noop: UIO[RaftNodeState] = ZIO.succeed(this)
 
-  def onRequestVote(from: NodeId, request: Request.RequestVote) = {
+  def onRequestVote(from: NodeId, request: RiffRequest.RequestVote) = {
     if (request.term > term) {
       becomeFollower(request.term, None).flatMap(_.castVote(from, request))
     } else {
@@ -172,7 +172,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
     }
   }
 
-  private def castVote(from: NodeId, request: Request.RequestVote) = {
+  private def castVote(from: NodeId, request: RiffRequest.RequestVote) = {
     val castVote = CastVoteLogic(from, term, request).flatMap { response =>
       val responseNodeIO = if (response.granted) {
         UIO(withRole(response.term, Role.Follower, None))
@@ -195,7 +195,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
     castVote.orDie
   }
 
-  def onRequestVoteResponse(from: NodeId, response: Response.RequestVoteResponse) = {
+  def onRequestVoteResponse(from: NodeId, response: RiffResponse.RequestVoteResponse) = {
     if (response.term > term) {
       becomeFollower(response.term, None)
     } else {
@@ -231,7 +231,7 @@ final case class RaftNodeState(ourNodeId: NodeId,
       _ <- Heartbeat.scheduleFollowerHeartbeat
       _ <- Logging.onHeartbeatTimeout
       latest <- Disk.latestCommitted
-      _ <- Cluster.broadcast(Request.RequestVote(newTerm, ourNodeId, latest)).retry(clusterRetrySchedule).orDie
+      _ <- Cluster.broadcast(RiffRequest.RequestVote(newTerm, ourNodeId, latest)).retry(clusterRetrySchedule).orDie
       peers <- Cluster.peers()
       candidateState = Role.Candidate(ourNodeId, newTerm, peers)
       _ <- Disk.voteFor(newTerm, ourNodeId).orDie
@@ -258,21 +258,21 @@ final case class RaftNodeState(ourNodeId: NodeId,
 
   def withRole(newTerm: Term, newRole: Role, leaderId: Option[NodeId]): RaftNodeState = copy(term = newTerm, role = newRole, currentLeaderId = leaderId)
 
-  def appendDataToLog(from: NodeId, request: Request.AppendEntries): ZIO[FullEnv, Nothing, RaftNodeState] = {
+  def appendDataToLog(from: NodeId, request: RiffRequest.AppendEntries): ZIO[FullEnv, Nothing, RaftNodeState] = {
     val task = Disk.appendEntriesOnMatch(request.previous, request.entries).orDie.flatMap {
       case Some(latestCoords) =>
         val newState = copy(
           lastApplied = latestCoords.offset,
           commitIndex = request.leaderCommit.min(latestCoords.offset),
           currentLeaderId = Some(from))
-        val response = Response.AppendEntriesResponse(term, true, newState.lastApplied)
+        val response = RiffResponse.AppendEntriesResponse(term, true, newState.lastApplied)
 
         for {
           _ <- Cluster.sendResponse(from, response).retry(clusterRetrySchedule).orDie
           _ <- Disk.commit(newState.commitIndex).unless(commitIndex >= newState.commitIndex)
         } yield newState
       case None =>
-        val response = Response.AppendEntriesResponse(term, false, lastApplied)
+        val response = RiffResponse.AppendEntriesResponse(term, false, lastApplied)
         Cluster.sendResponse(from, response).retry(clusterRetrySchedule).orDie.as(copy(currentLeaderId = Some(from)))
     }
 

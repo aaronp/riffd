@@ -79,15 +79,15 @@ object TimeRange {
 /**
  * User-level requests
  */
-sealed trait Request
+sealed trait RiffRequest
 
-object Request {
+object RiffRequest {
 
   final case class AppendEntries(term: Term,
                                  leaderId: NodeId,
                                  previous: LogCoords,
                                  leaderCommit: Offset,
-                                 entries: Array[LogEntry]) extends Request {
+                                 entries: Array[LogEntry]) extends RiffRequest {
     override def toString = {
       val label = if (entries.isEmpty) "Heartbeat" else "Append"
       s"$label { ${entries.size} entries, term:$term ldrId:$leaderId prev:$previous leaderKermit:${leaderCommit.offset} }"
@@ -108,21 +108,21 @@ object Request {
       Array.empty)
   }
 
-  final case class RequestVote(term: Term, candidateId: NodeId, latestLog: LogCoords) extends Request {
+  final case class RequestVote(term: Term, candidateId: NodeId, latestLog: LogCoords) extends RiffRequest {
     override def toString = s"RequestVote from $candidateId in term $term, latestLog:${latestLog}"
   }
 
 }
 
-sealed trait Response
+sealed trait RiffResponse
 
-object Response {
+object RiffResponse {
 
-  final case class AppendEntriesResponse(term: Term, success: Boolean, matchIndex: Offset) extends Response {
+  final case class AppendEntriesResponse(term: Term, success: Boolean, matchIndex: Offset) extends RiffResponse {
     override def toString = s"AppendResponse ok:$success in term $term, matchIndex:${matchIndex.offset}"
   }
 
-  final case class RequestVoteResponse(term: Term, granted: Boolean) extends Response {
+  final case class RequestVoteResponse(term: Term, granted: Boolean) extends RiffResponse {
     override def toString = s"VoteResponse ok:$granted in term $term"
   }
 
@@ -132,9 +132,9 @@ object Response {
 sealed trait Input
 
 object Input {
-  def request(fromNode: NodeId, msg: Request) = Input.UserInput(fromNode, Left(msg))
+  def request(fromNode: NodeId, msg: RiffRequest) = Input.UserInput(fromNode, Left(msg))
 
-  def response(fromNode: NodeId, msg: Response) = Input.UserInput(fromNode, Right(msg))
+  def response(fromNode: NodeId, msg: RiffResponse) = Input.UserInput(fromNode, Right(msg))
 
   def append(data: Array[Byte]): Input.Append = Input.Append(data)
 
@@ -145,7 +145,7 @@ object Input {
    */
   case class HeartbeatTimeout(node: Option[NodeId]) extends Input
 
-  case class UserInput(fromNode: NodeId, message: Either[Request, Response]) extends Input {
+  case class UserInput(fromNode: NodeId, message: Either[RiffRequest, RiffResponse]) extends Input {
     override def toString: NodeId = {
       message match {
         case Left(value) =>
@@ -165,9 +165,9 @@ object Input {
   }
 
   object UserInput {
-    def apply(fromNode: NodeId, message: Request) = new UserInput(fromNode, Left(message))
+    def apply(fromNode: NodeId, message: RiffRequest) = new UserInput(fromNode, Left(message))
 
-    def apply(fromNode: NodeId, message: Response) = new UserInput(fromNode, Right(message))
+    def apply(fromNode: NodeId, message: RiffResponse) = new UserInput(fromNode, Right(message))
   }
 
 }

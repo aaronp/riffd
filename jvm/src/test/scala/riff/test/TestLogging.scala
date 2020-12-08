@@ -37,14 +37,14 @@ object TestLogging {
 
   case class RoleChange(at: Instant, from: RaftNodeState, to: RaftNodeState)
 
-  case class RequestResponse(at: Instant, input: Input, message: Either[Request, Response])
+  case class RequestResponse(at: Instant, input: Input, message: Either[RiffRequest, RiffResponse])
 
   case class State(timeouts: List[Instant], roleChanges: List[RoleChange], requestResp: List[RequestResponse], debugMsgs: List[(Instant, String)], warnMsgs: List[(Instant, String)]) {
     def addTimeout(now: Instant) = copy(timeouts = now :: timeouts)
 
     def roleChange(now: Instant, from: RaftNodeState, to: RaftNodeState) = copy(roleChanges = RoleChange(now, from, to) :: roleChanges)
 
-    def requestResponse(now: Instant, input: Input, message: Either[Request, Response]) = copy(requestResp = RequestResponse(now, input, message) :: requestResp)
+    def requestResponse(now: Instant, input: Input, message: Either[RiffRequest, RiffResponse]) = copy(requestResp = RequestResponse(now, input, message) :: requestResp)
 
     def debug(now: Instant, message: String) = copy(debugMsgs = (now -> message) :: debugMsgs)
 
