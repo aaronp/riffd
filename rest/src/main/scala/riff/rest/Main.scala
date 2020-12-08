@@ -1,13 +1,13 @@
 package riff.rest
 
-import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
-import franz.rest.kafka.routes.ProducerOps
-import franz.ui.routes.StaticFileRoutes
+import args4c.implicits._
+import eie.io._
 import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
+import riff.Raft
+import riff.jvm.NioDisk
 import zio._
 import zio.interop.catz._
 import zio.interop.catz.implicits._
@@ -17,14 +17,12 @@ import scala.concurrent.ExecutionContext
 object Main extends CatsApp {
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
-    val host = "0.0.0.0"
-    val port = 8080
 
-    val logHeaders = true
-    val logBody = false
-
-    import args4c.implicits._
-    val config = args.toArray.asConfig()
+    val config = args.toArray.asConfig().getConfig("riff")
+    val host = config.getString("host")
+    val port = config.getInt("port")
+    val logHeaders = config.getBoolean("logHeaders")
+    val logBody = config.getBoolean("logBody")
 
     def mkRouter(restRoutes: HttpRoutes[Task]) = {
       val httpApp = org.http4s.server.Router[Task](
@@ -36,9 +34,13 @@ object Main extends CatsApp {
       } else httpApp
     }
 
+    val data = NioDisk(config.getString("dataDir").asPath)
+
     for {
-      restRoutes <- RiffRoutes(config)
+      node <- Raft(data)
+      restRoutes = RiffRoutes(node, environment)
       httpRoutes = mkRouter(restRoutes)
+      _ <- node.run.fork
       exitCode <- BlazeServerBuilder[Task](ExecutionContext.global)
         .bindHttp(port, host)
         .withHttpApp(httpRoutes)
