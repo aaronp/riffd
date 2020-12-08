@@ -190,7 +190,7 @@ object FixedLocalCluster {
       cluster <- TestCluster(nodeNames)
       nodeList <- ZIO.foreach(nodeNames) { name =>
         for {
-          raft <- Raft.make(
+          raft <- Raft.apply(
             NioDisk(dir.resolve(name)),
             name,
             UIO(cluster.clientForNode(name)),

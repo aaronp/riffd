@@ -1,0 +1,46 @@
+version: '2'
+
+services:
+  riff:
+    build: .
+    cap_add:
+      - SYS_PTRACE
+    ulimits:
+      nofile: 65536
+    ports:
+      - '8080:8080'
+      - '9000:9000'
+    networks:
+      - app-network
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    depends_on:
+      - riff
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    links:
+      - riff
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - "./docker/grafana.yml:/etc/grafana/provisioning/datasources/datasource.yaml"
+    links:
+      - prometheus
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: app-network

@@ -1,51 +1,19 @@
 package riff.rest
 
-import com.typesafe.config.Config
-import com.typesafe.scalalogging.StrictLogging
-import franz.rest.kafka.routes.ProducerOps
-import franz.ui.routes.StaticFileRoutes
-import org.http4s.HttpRoutes
-import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
-import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.server.middleware.Logger
+import args4c.implicits._
 import zio._
 import zio.interop.catz._
-import zio.interop.catz.implicits._
 
-import scala.concurrent.ExecutionContext
-
+/**
+ * A REST application which will drive
+ */
 object Main extends CatsApp {
 
   override def run(args: List[String]): URIO[ZEnv, ExitCode] = {
-    val host = "0.0.0.0"
-    val port = 8080
-
-    val logHeaders = true
-    val logBody = false
-
-    import args4c.implicits._
-    val config = args.toArray.asConfig()
-
-    def mkRouter(restRoutes: HttpRoutes[Task]) = {
-      val httpApp = org.http4s.server.Router[Task](
-        "/rest" -> restRoutes,
-        "/" -> StaticFileRoutes(config).routes[Task]()
-      ).orNotFound
-      if (logHeaders || logBody) {
-        Logger.httpApp(logHeaders, logBody)(httpApp)
-      } else httpApp
-    }
-
+    val config = args.toArray.asConfig().getConfig("riff")
     for {
-      restRoutes <- RiffRoutes(config)
-      httpRoutes = mkRouter(restRoutes)
-      exitCode <- BlazeServerBuilder[Task](ExecutionContext.global)
-        .bindHttp(port, host)
-        .withHttpApp(httpRoutes)
-        .serve
-        .compile[Task, Task, cats.effect.ExitCode]
-        .drain
-        .fold(_ => ExitCode.failure, _ => ExitCode.success)
+      restServer <- RiffRaftRest(config)
+      exitCode <- restServer.serve
     } yield exitCode
   }
 }

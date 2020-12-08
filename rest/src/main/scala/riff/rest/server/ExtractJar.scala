@@ -1,10 +1,11 @@
-package riff.rest
+package riff.rest.server
+
+import com.typesafe.scalalogging.StrictLogging
 
 import java.net.URL
 import java.nio.file.attribute.PosixFilePermission
 import java.nio.file.{FileAlreadyExistsException, Files, Path, Paths}
 import java.util.zip.ZipInputStream
-import com.typesafe.scalalogging.StrictLogging
 
 /**
  * Provides a means to extract the web artifacts (css, html files, etc) from our Jar to some specified directory
@@ -15,8 +16,8 @@ object ExtractJar extends StrictLogging {
     logger.info(s"Extracting jar contents to ${toDir.toAbsolutePath}")
 
     val scriptWeCanAssumeIsThere = "web/css/knownFixedWebFile.txt"
-    val JarPath1                 = ("jar:file:(.*)!/" + scriptWeCanAssumeIsThere).r
-    val JarPath2                 = "file:(.*\\.jar)".r
+    val JarPath1 = ("jar:file:(.*)!/" + scriptWeCanAssumeIsThere).r
+    val JarPath2 = "file:(.*\\.jar)".r
 
     val url: URL = {
       val scriptUrl = getClass.getClassLoader.getResource(scriptWeCanAssumeIsThere)
@@ -41,7 +42,6 @@ object ExtractJar extends StrictLogging {
    * Our text resources (html, css, js) get jarred up together.
    *
    * When running we should be able to extract them so the [[StaticFileRoutes]] can serve them from local disk.
-   *
    *
    * @param fromFile the path to the jar artifact
    * @param toDir    the local destination directory
@@ -98,4 +98,5 @@ object ExtractJar extends StrictLogging {
       }
     }
   }
+
 }

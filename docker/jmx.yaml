@@ -1,0 +1,9 @@
+---
+startDelaySeconds: 0
+hostPort: 127.0.0.1:9000
+username:
+password:
+ssl: false
+rules:
+  - pattern: 'riff<type=heartbeat><>: (.+)'
+  - pattern: 'TODO<type=heartbeat><>: (.+)'

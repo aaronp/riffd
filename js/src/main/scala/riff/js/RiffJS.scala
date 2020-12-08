@@ -10,7 +10,7 @@ object RiffJS {
             cluster: ClusterLocal,
             logger: Logging.Service,
             newHeartbeat: ZIO[Has[Queue[Input]], Nothing, Heartbeat.Service]): ZIO[zio.ZEnv, NoSuchElementException, Raft] = {
-    Raft.make(
+    Raft(
       disk = disk,
       nodeId = cluster.ourNodeId,
       raftCluster = UIO(cluster),

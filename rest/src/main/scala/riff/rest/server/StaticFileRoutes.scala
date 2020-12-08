@@ -1,13 +1,14 @@
-package riff.rest
+package riff.rest.server
 
-import java.nio.file.{Paths, Path => JPath}
 import cats.data.OptionT
 import cats.effect.{Sync, _}
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.StrictLogging
+import eie.io._
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{HttpRoutes, Request, Response, StaticFile}
-import eie.io._
+
+import java.nio.file.{Paths, Path => JPath}
 import scala.concurrent.ExecutionContext
 
 /**

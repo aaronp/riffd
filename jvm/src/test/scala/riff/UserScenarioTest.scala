@@ -124,7 +124,7 @@ class UserScenarioTest extends BaseTest {
       disk <- Disk.inMemory("test")
       logging = TestLogging()
       hb = TestHeartbeat()
-      initialState <- Raft.make(
+      initialState <- Raft.apply(
         disk,
         nodeId = from.ourNodeId,
         raftCluster = UIO(testCluster.clientForNode(from.ourNodeId)),
