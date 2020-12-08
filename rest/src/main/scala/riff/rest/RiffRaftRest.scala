@@ -16,6 +16,7 @@ import zio.interop.catz.implicits._
 import zio.{ExitCode, Task, ZEnv, ZIO}
 
 import java.nio.file.Path
+import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
 
 /**
@@ -38,6 +39,7 @@ case class RiffRaftRest(settings: Settings, node: Raft) {
     } else httpApp
   }
 
+  @implicitNotFound("You need ConcurrentEffect, which (if you're calling w/ a ZIO runtime in scope), can be fixed by: import zio.interop.catz._")
   def serve(implicit ce: ConcurrentEffect[Task]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
     for {
       env <- ZIO.environment[ZEnv]
@@ -80,6 +82,8 @@ object RiffRaftRest {
         dataDir = config.getString("dataDir").asPath
       )
     }
+
+    def fromRootConfig(rootConfig: Config = ConfigFactory.load()): Settings = Settings(rootConfig.getConfig("riff"))
   }
 
 }
