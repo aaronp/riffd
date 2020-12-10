@@ -120,7 +120,7 @@ object StaticFileRoutes {
    * @return the StaticFileRoutes
    */
   def apply(rootConfig: Config): StaticFileRoutes = {
-    fromWWWConfig(rootConfig.getConfig("franz.www"))
+    fromWWWConfig(rootConfig.getConfig("www"))
   }
 
   /**

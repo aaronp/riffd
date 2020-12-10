@@ -41,7 +41,9 @@ object RiffRaftRestClient {
     }
 
     override def send(either: Either[RiffRequest, RiffResponse]): Task[Boolean] = {
-      send(uri"${hostPort}/riff/${ourNodeId}", either)
+      val uriString = s"${hostPort}/riff/${ourNodeId}"
+//      send(uri"$uriString", either)
+      ???
     }
   }
 

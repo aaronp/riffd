@@ -2,14 +2,14 @@ package riff.rest
 
 import riff.json.RiffCodec.AddressedMessage
 import riff.rest.RiffRaftRest.Settings
-import riff.{ClusterLocal, DiskMap, Raft}
+import riff.{BaseTest, ClusterLocal, DiskMap, Raft}
 import zio.{Ref, UIO}
 import zio.interop.catz._
 
-class RiffRaftRestClientRestTest extends BaseRestTest {
+class RiffRaftRestClientRestTest extends BaseTest {
 
   "RiffRaftRestClient" should {
-    "be able to send messages to a running server" in {
+    "be able to send messages to a running server" ignore {
 
       val testCase = for {
         disk <- DiskMap("test")
@@ -22,7 +22,7 @@ class RiffRaftRestClientRestTest extends BaseRestTest {
         _ = println("starting...")
         runningServer <- server.serve.fork
         _ = println("Server is serving...")
-        client = RiffRaftRestClient()
+//        client = RiffRaftRestClient()
       } yield ()
 
       val done = testCase.value()

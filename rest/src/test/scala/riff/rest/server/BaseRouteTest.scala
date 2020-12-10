@@ -1,11 +1,11 @@
 package riff.rest.server
 
 import org.http4s._
-import riff.rest.BaseRestTest
+import riff.BaseTest
 import zio.Task
 import zio.interop.catz._
 
-abstract class BaseRouteTest extends BaseRestTest {
+abstract class BaseRouteTest extends BaseTest {
   implicit def forResponse(response: Response[Task])(implicit rt: zio.Runtime[zio.ZEnv]) = new {
 
     def bodyTask: Task[String] = EntityDecoder.decodeText(response)

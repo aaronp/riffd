@@ -7,15 +7,14 @@ import org.http4s.HttpRoutes
 import org.http4s.implicits.http4sKleisliResponseSyntaxOptionT
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
-import riff.Raft
 import riff.jvm.NioDisk
 import riff.rest.RiffRaftRest.Settings
 import riff.rest.server.{RiffRaftRestRoutes, StaticFileRoutes}
+import riff.{DiskMap, Raft}
 import zio.interop.catz._
 import zio.interop.catz.implicits._
-import zio.{ExitCode, Task, ZEnv, ZIO}
+import zio._
 
-import java.nio.file.Path
 import scala.annotation.implicitNotFound
 import scala.concurrent.ExecutionContext
 
@@ -32,7 +31,7 @@ case class RiffRaftRest(settings: Settings, node: Raft) {
   private def mkRouter(restRoutes: HttpRoutes[Task]) = {
     val httpApp = org.http4s.server.Router[Task](
       "/rest" -> restRoutes,
-      "/" -> StaticFileRoutes(config).routes[Task]()
+      "/" -> StaticFileRoutes(riffConfig).routes[Task]()
     ).orNotFound
     if (logHeaders || logBody) {
       Logger.httpApp(logHeaders, logBody)(httpApp)
@@ -63,13 +62,18 @@ object RiffRaftRest {
   def apply(rootConfig: Config = ConfigFactory.load()): ZIO[zio.ZEnv, Nothing, RiffRaftRest] = apply(Settings(rootConfig.getConfig("riff")))
 
   def apply(settings: Settings): ZIO[zio.ZEnv, Nothing, RiffRaftRest] = {
-    val disk = NioDisk(settings.dataDir)
-    Raft(disk).map { raft: Raft =>
-      new RiffRaftRest(settings, raft)
+    val diskIO = settings.dataDir match {
+      case "" => DiskMap("in-memory")
+      case path => UIO(NioDisk(path.asPath))
     }
+
+    for {
+      disk <- diskIO
+      raft <- Raft(disk)
+    } yield new RiffRaftRest(settings, raft)
   }
 
-  case class Settings(config: Config, host: String, port: Int, logHeaders: Boolean, logBody: Boolean, dataDir: Path)
+  case class Settings(riffConfig: Config, host: String, port: Int, logHeaders: Boolean, logBody: Boolean, dataDir: String)
 
   object Settings {
     def apply(config: Config): Settings = {
@@ -79,7 +83,7 @@ object RiffRaftRest {
         port = config.getInt("port"),
         logHeaders = config.getBoolean("logHeaders"),
         logBody = config.getBoolean("logBody"),
-        dataDir = config.getString("dataDir").asPath
+        dataDir = config.getString("data")
       )
     }
 

@@ -9,4 +9,4 @@ target
 .vscode
 out
 shared-src
-src/gitbook/_book
+src/gitbook/_bookriff-data

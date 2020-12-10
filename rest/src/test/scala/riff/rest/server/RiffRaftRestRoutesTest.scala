@@ -1,6 +1,7 @@
 package riff.rest.server
 
 import io.circe.syntax._
+import org.http4s.Header
 import org.scalatest.GivenWhenThen
 import riff.RiffRequest.AppendEntries
 import riff.RiffResponse.AppendEntriesResponse
@@ -58,7 +59,7 @@ class RiffRaftRestRoutesTest extends BaseRouteTest with GivenWhenThen {
 
       val (Some(response), clusterMessages: List[AddressedMessage]) = testCase.provide(zenv).value()
       response.status.code shouldBe 200
-      val Some(contentType) = response.headers.find(_.name.value == "Content-Type")
+      val Some(contentType: Header) = response.headers.find(_.name.value == "Content-Type")
       contentType.value shouldBe "application/json"
       response.bodyAsString shouldBe "true"
 
