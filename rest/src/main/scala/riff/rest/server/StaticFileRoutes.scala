@@ -26,8 +26,7 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
                             landingPage: String,
                             jsRootDirs: Seq[JPath],
                             cssRootDirs: Seq[JPath],
-                            resourceMap: Map[String, Option[String]])
-  extends StrictLogging {
+                            resourceMap: Map[String, Option[String]]) extends StrictLogging {
 
   htmlRootDirs.foreach { htmlRootDir =>
     require(htmlRootDir.exists(), s"htmlRootDir '$htmlRootDir' doesn't exist (working dir is ${(Paths.get(".").toAbsolutePath)})")
@@ -74,7 +73,6 @@ case class StaticFileRoutes(htmlRootDirs: Seq[JPath],
     }
 
     private def getHTML(unmatchedPath: String, request: Request[F]): F[Response[F]] = {
-      println(s"unmatchedPath is $unmatchedPath")
       resolvePaths(htmlRootDirs, unmatchedPath, request).getOrElseF(NotFound())
     }
 
