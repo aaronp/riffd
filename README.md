@@ -1,7 +1,11 @@
 # Building
 
-# Docs
+<script defer type="text/javascript" src="src/gitbook/demo/riffjs-opt.js"></script>
+<script defer type="text/javascript" src="src/gitbook/demo/main.js"></script>
+<link href="src/gitbook/demo/app.css" />
 
+# Docs
+<div id="target"></div>
 I've used gitbook to generate the site, which can be configured as per:
 ```
 https://github.com/GitbookIO/gitbook/blob/master/docs/config.md
