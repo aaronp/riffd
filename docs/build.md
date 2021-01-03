@@ -1,0 +1,3 @@
+# Building
+
+[home](index.md)
