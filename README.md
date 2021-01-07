@@ -1,6 +1,6 @@
 # Riff - Raft in your browser!
 
-This project was created as an example of leveraging multi-platform compilation to drive development and testing -- namely by running the server code [in your browser](https://aaronp.github.io/riffd)
+This project was created as an example of leveraging multi-platform compilation to drive development and testing -- namely by running the server code directly in your browser! In fact, you can run this repo's code now [right here](https://aaronp.github.io/riffd) (though currently only browsers w/ BroadcastChannel are supported until I polyfill that ... sorry Safari/IE users!)
 
 It was written using [ZIO](https://zio.dev/) and [ScalaJS](https://www.scala-js.org/), though this project is less about the actual code and more about the concept of being able to do 
 meaningful testing where bringing cluster nodes up and down is as straight-forward as opening/closing a browser tab: 
